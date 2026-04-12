@@ -1,0 +1,30 @@
+# Rust build
+/target/
+
+# Whisper.cpp (muy grande, se compila aparte)
+/whisper.cpp/
+
+# Environment (contiene secrets)
+.env
+
+# Temp/test files
+*.json
+test-*
+
+# VoiceMeeter installer
+VoiceMeeterSetup*
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Engram (base de datos local)
+engram-chunks/
+
+# Planning (si no se usa)
+/.planning/
