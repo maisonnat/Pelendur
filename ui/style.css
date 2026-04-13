@@ -1,0 +1,40 @@
+/* Native Vibrancy will handle the blur. We just need semi-transparent backgrounds. */
+body {
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  /* Make the body fully transparent */
+  background: transparent;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  height: 100vh;
+  /* This ensures the whole body area can be used for dragging if needed, but we used it in body tag as well */
+}
+
+.hud-container {
+  margin-top: 10px;
+  width: 90%;
+  max-width: 700px;
+  /* Semi-transparent background for readability on vibrancy */
+  background: rgba(30, 30, 30, 0.4);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  /* The drag region will be here too */
+}
+
+.suggestions-feed {
+  color: #ffffff;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
+
+.suggestion {
+  margin: 0;
+  padding: 4px 0;
+}
+
+/* NO backdrop-filter here to avoid artifacts on transparent windows. */
