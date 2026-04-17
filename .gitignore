@@ -1,5 +1,6 @@
 # Rust build
 /target/
+src-tauri/target/
 
 # Whisper.cpp (muy grande, se compila aparte)
 /whisper.cpp/
@@ -8,7 +9,6 @@
 .env
 
 # Temp/test files
-*.json
 test-*
 
 # VoiceMeeter installer
@@ -23,8 +23,29 @@ Thumbs.db
 Desktop.ini
 .DS_Store
 
+# Windows Zone.Identifier files
+*:Zone.Identifier
+
 # Engram (base de datos local)
 engram-chunks/
 
-# Planning (si no se usa)
+# Agent tools
+.atl/
+.sisyphus/
+.specify/
+.gemini/
+.aider*
+
+# Planning
 /.planning/
+
+# Node
+node_modules/
+ui-profile/dist/
+
+# User knowledge data (personal YAML/JSON)
+knowledge/*.yaml
+knowledge/*.yml
+
+# Cargo.lock duplicates
+src-tauri/Cargo.lock

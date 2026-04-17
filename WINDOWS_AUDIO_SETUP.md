@@ -2,6 +2,8 @@
 
 GhostAI Pilot uses [cpal](https://github.com/RustAudio/cpal) with WASAPI for audio capture on Windows.
 
+> **Recommended:** Set `AUDIO_MODE=polling` in your `.env` file. Polling mode provides reliable system audio capture without requiring virtual audio cables or Stereo Mix on most Windows setups. The `auto` mode (default) will attempt WASAPI loopback first and fall back to polling if needed.
+
 ## The Problem
 
 Windows doesn't have a simple "capture system audio" API like Linux's PulseAudio monitor. WASAPI provides **loopback** recording, but it requires either:

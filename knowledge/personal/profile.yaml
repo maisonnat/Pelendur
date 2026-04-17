@@ -1,0 +1,130 @@
+# Perfil Personal para Pelendur
+# Este archivo define quién eres tú, tu experiencia, habilidades y contexto profesional
+
+nombre: "Tu Nombre"
+rol_actual: "Senior Backend Engineer"
+experiencia: "8 años"
+ubicacion: "Remoto / Ciudad, País"
+
+skills:
+  dominados:
+    - nombre: "Go"
+      nivel: "expert"
+      años: 5
+      proyectos:
+        - "API gateway de alto rendimiento"
+        - "Sistema de microservicios para pagos"
+        - "Plataforma de procesamiento de eventos en tiempo real"
+    - nombre: "Kubernetes"
+      nivel: "advanced"
+      años: 3
+      proyectos:
+        - "Orquestación de servicios en producción"
+        - "CI/CD pipeline con Helm y ArgoCD"
+        - "Monitoreo y logging con Prometheus y Grafana"
+    - nombre: "PostgreSQL"
+      nivel: "expert"
+      años: 6
+      proyectos:
+        - "Diseño de esquemas para alta concurrencia"
+        - "Optimización de consultas complejas"
+        - "Replicación y particionamiento de datos"
+    - nombre: "Redis"
+      nivel: "advanced"
+      años: 4
+      proyectos:
+        - "Cache de sesiones distribuidas"
+        - "Cola de trabajos con persistencia"
+        - "Leaderboard y contador en tiempo real"
+    - nombre: "Docker"
+      nivel: "expert"
+      años: 5
+      proyectos:
+        - "Containerización de aplicaciones legacy"
+        - "Imágenes multi-stage optimizadas"
+        - "Escaneo de vulnerabilidades y hardening"
+    - nombre: "Terraform"
+      nivel: "intermediate"
+      años: 2
+      proyectos:
+        - "Infraestructura como código para AWS"
+        - "Módulos reutilizables para VPC y RDS"
+        - "Gestión de estado con backend remoto"
+
+  intermedios:
+    - nombre: "Rust"
+      nivel: "learning"
+      años: 1
+      proyectos:
+        - "CLI tool para procesamiento de logs"
+        - "Servicio web básico con Actix"
+    - nombre: "React"
+      nivel: "learning"
+      años: 1
+      proyectos:
+        - "Dashboard interno de métricas"
+        - "Componentes reutilizables de UI"
+    - nombre: "Python"
+      nivel: "intermediate"
+      años: 3
+      proyectos:
+        - "Scripts de automatización y DevOps"
+        - "Prototipos de machine learning"
+        - "Análisis de datos con Pandas"
+
+historias_star:
+  - id: "leadership-1"
+    situacion: "Cuando el equipo de 5 personas perdió al tech lead inesperadamente durante un sprint crítico"
+    tarea: "Tenía que tomar ownership del proyecto sin título formal, manteniendo el moral y entregando a tiempo"
+    accion: "Organicé daily standups de 15 minutos, creé un sistema de pair programming rotativo, establecí métricas claras de progreso y facilité sesiones de conocimiento compartido"
+    resultado: "Entregamos 2 semanas antes del deadline, 0 bugs en producción, y el equipo reportó mayor satisfacción y cohesión"
+    tags: ["leadership", "crisis", "team-management", "ownership"]
+    
+  - id: "technical-1"
+    situacion: "Latencia de 2s en el endpoint principal de la API de pagos, causando timeouts y abandono de carritos"
+    tarea: "Reducir a <200ms sin cambiar la arquitectura existente ni agregar nuevos servicios"
+    accion: "Implementé cache L1 con Redis para respuestas frecuentes, optimicé connection pooling con PgBouncer, añadí índices compuestos basados en análisis de consultas reales, y eliminó llamadas N+1 mediante eager loading estratégico"
+    resultado: "180ms p99 de latencia, reducción de costos de infra del 40% por menor uso de CPU, y aumento del 15% en tasa de conversión de pagos"
+    tags: ["performance", "backend", "optimization", "database", "caching"]
+    
+  - id: "technical-2"
+    situacion: "Necesidad de migrar un monolito de 200+ endpoints a microservicios sin downtime ni degradación de experiencia de usuario"
+    tarea: "Diseñar y ejecutar una estrategia de migración progresiva que permitiera aprender y ajustar en el camino"
+    accion: "Utilicé el patrón de strangler fig con un API gateway para enrutamiento condicional, creé contratos claros entre servicios usando OpenAPI, implementé pruebas de contrato automatizadas, y establecí un sistema de feature flags para rollout gradual"
+    resultado: "Migración completada en 6 meses con 99.95% de uptime, reducción del 30% en tiempo de deploy, y equipo capaz de trabajar en servicios independientes"
+    tags: ["architecture", "migration", "microservices", "devops", "strangler-fig"]
+    
+  - id: "behavioral-1"
+    situacion: "Conflicto entre dos desarrolladores senior sobre el enfoque técnico para una nueva funcionalidad crítica"
+    tarea: "Mediar el desacuerdo evitando que escalara y encontrando una solución técnica que satisfaciera ambas perspectivas"
+    accion: "Facilité una reunión estructurada donde cada parte presentó su enfoque con pros/contras, identifiqué los valores subyacentes detrás de cada posición, y propuse un híbrido que capturara lo mejor de ambos enfoques"
+    resultado: "Solución técnica implementada que combinó rendimiento y mantenibilidad, relación entre los desarrolladores mejoró, y establecí un proceso para resolver futuros desacuerdos técnicos"
+    tags: ["conflict-resolution", "communication", "mediation", "team-dynamics"]
+    
+  - id: "behavioral-2"
+    situacion: "Necesidad de presentar una arquitectura técnica compleja a stakeholders no técnicos para obtener aprobación de presupuesto"
+    tarea: "Traducir conceptos técnicos de alto nivel en términos de negocio que resonaran con ejecutivos enfocados en ROI y riesgo"
+    accion: "Desarrollé una presentación usando analogías de construcción (foundation, estructura, acabados), cuantifiqué riesgos técnicos como oportunidades de negocio, y enfocé en resultados medibles en lugar de detalles de implementación"
+    resultado: "Presupuesto aprobado al 120% del solicitado, stakeholders reportaron clara comprensión del valor técnico, y se estableció un patrón para futuras presentaciones técnicas"
+    tags: ["communication", "stakeholder-management", "presentation", "business-acumen"]
+
+logros:
+  - "Reduje costos de AWS un 60% migrando a spot instances y implementando políticas de escalado inteligente"
+  - "Lideré migración de monolito a microservicios (200+ endpoints) con cero downtime durante horas pico"
+  - "Contribuidor activo a open source (500+ stars en mi proyecto de observabilidad distribuida)"
+  - "Mejoré la velocidad de deploy de 2 horas a 8 minutos mediante optimización de pipeline y pruebas paralelas"
+  - "Reduje incidentes de producción en un 75% mediante implementación de chaos testing y monitoreo proactivo"
+
+debilidades_conocidas:
+  - area: "system design de ML pipelines"
+    estrategia: "Honesto sobre que estoy aprendiendo, menciono mi proyecto de side project con ML y enfoco en principios de datos que sí domino (calidad, versionamiento, monitoreo)"
+  - area: "frontend avanzado (animaciones complejas, estado global sofisticado)"
+    estrategia: "Enfoco en mi capacidad de aprender rápido, doy ejemplos de tecnologías que aprendí en <1 mes, y propongo colaboración con especialistas frontend cuando sea necesario"
+  - area: "conocimiento profundo de regulaciones financieras específicas (PCI-DSS nivel 1, etc.)"
+    estrategia: "Destaco mi experiencia trabajando con equipos de compliance y mi habilidad para aprender rápidamente marcos regulatorios cuando son relevantes para el proyecto"
+
+preferencias:
+  estilo_comunicacion: "directo y basado en datos, pero con empatía"
+  entorno_trabajo_preferido: "equipos pequeños con alto grado de autonomía y cultura de aprendizaje"
+  tipo_proyectos_preferido: "sistemas de backend de alta escala con desafíos técnicos interesantes"
+  motivacion_principal: "resolver problemas complejos que tengan impacto real en usuarios y negocio"
