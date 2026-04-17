@@ -3,7 +3,7 @@
 //! Captures audio from a specific process (Zoom, Chrome, etc.)
 //! using Windows WASAPI Process Loopback mode.
 
-#[cfg(feature = "wasapi")]
+#[cfg(feature = "wasapi_loopback")]
 pub mod real {
     use crate::audio::AudioChunk;
     use anyhow::{anyhow, Result};
@@ -14,7 +14,7 @@ pub mod real {
     use wasapi::*;
 
     /// Information about a process that might be producing audio.
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub struct AudioProcess {
         pub pid: u32,
         pub name: String,
@@ -62,6 +62,7 @@ pub mod real {
     }
 
     /// Interactive selector for audio processes.
+    /// Accepts either a list index (1-N) or a direct PID number.
     pub fn select_audio_process() -> Result<AudioProcess> {
         let processes = list_audio_processes();
 
@@ -77,7 +78,10 @@ pub mod real {
         }
 
         println!();
-        print!("  Select app [1-{}]: ", processes.len());
+        print!(
+            "  Select app [1-{}] or type a PID directly: ",
+            processes.len()
+        );
         use std::io::Write;
         std::io::stdout().flush().ok();
 
@@ -85,12 +89,29 @@ pub mod real {
         std::io::stdin().read_line(&mut input).ok();
         let input = input.trim();
 
-        let idx: usize = input.parse().map_err(|_| anyhow!("Invalid selection"))?;
-        if idx < 1 || idx > processes.len() {
-            return Err(anyhow!("Selection out of range"));
-        }
+        let num: u32 = input.parse().map_err(|_| anyhow!("Invalid number"))?;
 
-        let selected = processes[idx - 1].clone();
+        // If the number is within list range, use it as index
+        // Otherwise treat it as a direct PID
+        let selected = if num >= 1 && (num as usize) <= processes.len() {
+            processes[(num as usize) - 1].clone()
+        } else {
+            // Treat as PID — find it in the list or create a placeholder
+            if let Some(proc) = processes.iter().find(|p| p.pid == num) {
+                proc.clone()
+            } else {
+                // PID not in list — create entry and try anyway
+                println!(
+                    "  ⚠ PID {} not in audio list, attempting capture anyway...",
+                    num
+                );
+                AudioProcess {
+                    pid: num,
+                    name: format!("PID {}", num),
+                }
+            }
+        };
+
         println!("  ✓ Selected: {} (PID: {})", selected.name, selected.pid);
         println!();
 
@@ -124,7 +145,7 @@ pub mod real {
         include_tree: bool,
         tx: mpsc::Sender<AudioChunk>,
     ) -> Result<()> {
-        initialize_mta().ok(); // Don't fail on COM init, may already be initialized
+        let _ = initialize_mta().ok(); // Don't fail on COM init, may already be initialized
 
         info!(
             "Starting loopback capture for PID {} (include_tree: {})",
@@ -145,7 +166,7 @@ pub mod real {
 
         let buffer_duration_hns = 200_000; // 20ms
 
-        let mode = StreamMode::EventsShared {
+        let mode = StreamMode::PollingShared {
             autoconvert: true,
             buffer_duration_hns,
         };
@@ -155,10 +176,6 @@ pub mod real {
             .map_err(|e| anyhow!("Failed to initialize loopback client: {:?}", e))?;
 
         info!("Loopback capture: {}Hz, {} ch", sample_rate, channels);
-
-        let h_event = audio_client
-            .set_get_eventhandle()
-            .map_err(|e| anyhow!("Failed to get event handle: {:?}", e))?;
 
         let capture_client = audio_client
             .get_audiocaptureclient()
@@ -176,11 +193,25 @@ pub mod real {
         let chunk_size = sample_rate as usize; // 1 second chunks
         let channels_u16 = channels;
 
+        use std::time::{Duration, Instant};
+
+        let mut last_data_time = Instant::now();
+        const STALL_TIMEOUT: Duration = Duration::from_secs(3);
+        const POLL_INTERVAL: Duration = Duration::from_millis(3);
+
         loop {
-            // Read available data
-            capture_client
-                .read_from_device_to_deque(&mut sample_queue)
-                .map_err(|e| anyhow!("Failed to read from device: {:?}", e))?;
+            // Check for available packets
+            let packet_frames = capture_client
+                .get_next_packet_size()
+                .map_err(|e| anyhow!("Failed to get packet size: {:?}", e))?
+                .unwrap_or(0);
+
+            if packet_frames > 0 {
+                last_data_time = Instant::now();
+                capture_client
+                    .read_from_device_to_deque(&mut sample_queue)
+                    .map_err(|e| anyhow!("Failed to read from device: {:?}", e))?;
+            }
 
             // Convert and send chunks
             let bytes_per_chunk = blockalign * chunk_size;
@@ -192,7 +223,7 @@ pub mod real {
 
                 // Convert bytes to f32 samples
                 let samples: Vec<f32> = chunk_bytes
-                    .chunks_exact(4) // 32-bit float = 4 bytes
+                    .chunks_exact(4)
                     .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
                     .collect();
 
@@ -212,14 +243,15 @@ pub mod real {
                 });
             }
 
-            // Wait for next buffer
-            if h_event.wait_for_event(1000).is_err() {
-                warn!("Loopback capture event timeout, stopping");
-                audio_client
-                    .stop_stream()
-                    .map_err(|e| anyhow!("Failed to stop stream: {:?}", e))?;
-                break;
+            // Stall detection
+            if last_data_time.elapsed() > STALL_TIMEOUT {
+                warn!(
+                    "No audio data for {:?}, capture may be stalled",
+                    STALL_TIMEOUT
+                );
             }
+
+            std::thread::sleep(POLL_INTERVAL);
         }
 
         info!("Loopback capture thread ended");
@@ -228,12 +260,12 @@ pub mod real {
 }
 
 // Stub when wasapi is not available
-#[cfg(not(feature = "wasapi"))]
+#[cfg(not(feature = "wasapi_loopback"))]
 pub mod real {
     use anyhow::{anyhow, Result};
     use std::sync::mpsc;
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
     pub struct AudioProcess {
         pub pid: u32,
         pub name: String,
