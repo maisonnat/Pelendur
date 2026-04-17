@@ -2,13 +2,19 @@ use crate::config::{Config, SttProvider};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::io::Cursor;
+#[cfg(not(feature = "parakeet"))]
 use std::process::Stdio;
+#[cfg(not(feature = "parakeet"))]
 use std::time::Instant;
+#[cfg(not(feature = "parakeet"))]
 use tokio::process::Command;
 use tracing::debug;
 
+#[cfg(feature = "parakeet")]
+use crate::parakeet::ParakeetModel;
+
 /// Encode PCM f32 samples into WAV bytes (16kHz mono, 16-bit)
-pub fn pcm_to_wav(samples: &[f32], sample_rate: u32) -> Vec<u8> {
+pub fn pcm_to_wav(samples: &[f32], sample_rate: u32) -> Result<Vec<u8>> {
     let spec = hound::WavSpec {
         channels: 1,
         sample_rate,
@@ -18,21 +24,25 @@ pub fn pcm_to_wav(samples: &[f32], sample_rate: u32) -> Vec<u8> {
 
     let mut cursor = Cursor::new(Vec::new());
     {
-        let mut writer = hound::WavWriter::new(&mut cursor, spec).unwrap();
+        let mut writer = hound::WavWriter::new(&mut cursor, spec)
+            .context("Failed to create WAV writer")?;
         for &sample in samples {
             let sample_i16 = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
-            writer.write_sample(sample_i16).unwrap();
+            writer.write_sample(sample_i16)
+                .context("Failed to write WAV sample")?;
         }
-        writer.finalize().unwrap();
+        writer.finalize()
+            .context("Failed to finalize WAV")?;
     }
 
-    cursor.into_inner()
+    Ok(cursor.into_inner())
 }
 
-/// Transcribe audio — routes to Groq API or local whisper.cpp
+/// Transcribe audio — routes to Groq API, z.ai API, or local whisper.cpp
 pub async fn transcribe(config: &Config, audio_wav: &[u8]) -> Result<String> {
     match config.stt_provider {
         SttProvider::Groq => transcribe_groq(config, audio_wav).await,
+        SttProvider::Zai => transcribe_zai(config, audio_wav).await,
         SttProvider::Local => transcribe_local(config, audio_wav).await,
     }
 }
@@ -42,6 +52,7 @@ pub async fn transcribe(config: &Config, audio_wav: &[u8]) -> Result<String> {
 // ============================================================
 
 /// Transcribe using local whisper.cpp CLI
+#[cfg(not(feature = "parakeet"))]
 async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
     let start = Instant::now();
 
@@ -50,7 +61,10 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
 
     // Write audio to temp file
     let temp_dir = std::env::temp_dir();
-    let temp_wav_name = format!("ghostai_audio_{}.wav", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos());
+    let temp_wav_name = format!("pelendur_audio_{}.wav", std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0));
     let temp_wav = temp_dir.join(&temp_wav_name);
     tokio::fs::write(&temp_wav, audio_wav).await.context("Failed to write temp WAV file")?;
 
@@ -69,15 +83,18 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
     // Build whisper-cli command
     let threads = num_cpus().min(4); 
 
+    let temp_wav_str = temp_wav.to_str()
+        .context("Temp WAV path contains non-UTF8 characters")?;
+
     let output = Command::new(&whisper_bin)
         .args([
             "-m", model_path,
-            "-f", temp_wav.to_str().unwrap(),
+            "-f", temp_wav_str,
             "-l", &config.whisper_language,
             "--no-timestamps",
             "-t", &threads.to_string(),
             "--output-txt",
-            "--output-file", temp_wav.to_str().unwrap(), // This ensures output is <path>.txt
+            "--output-file", temp_wav_str,
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -142,6 +159,7 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
 }
 
 /// Find whisper-cli binary in common locations
+#[cfg(not(feature = "parakeet"))]
 fn find_whisper_binary() -> Result<std::path::PathBuf> {
     // Check env var first
     if let Ok(path) = std::env::var("WHISPER_BIN") {
@@ -205,10 +223,37 @@ fn find_whisper_binary() -> Result<std::path::PathBuf> {
 }
 
 /// Get number of CPUs (simple)
+#[cfg(not(feature = "parakeet"))]
 fn num_cpus() -> usize {
     std::thread::available_parallelism()
         .map(|n| n.get())
         .unwrap_or(4)
+}
+
+// ============================================================
+// Parakeet ONNX STT (local)
+// ============================================================
+
+/// Stub — Parakeet routes through the dedicated inference thread, not here.
+#[cfg(feature = "parakeet")]
+async fn transcribe_local(_config: &Config, _audio_wav: &[u8]) -> Result<String> {
+    anyhow::bail!("Use inference thread for Parakeet STT")
+}
+
+/// Transcribe using Parakeet ONNX model (called from dedicated inference thread).
+/// Receives raw f32 samples directly — no WAV conversion needed.
+#[cfg(feature = "parakeet")]
+pub fn transcribe_parakeet_sync(model: &mut ParakeetModel, samples: Vec<f32>) -> Result<String> {
+    let start = std::time::Instant::now();
+    let result = model.transcribe_samples(samples)
+        .map_err(|e| anyhow::anyhow!("Parakeet inference failed: {}", e))?;
+    let elapsed = start.elapsed();
+    if result.text.trim().is_empty() {
+        tracing::debug!("Parakeet returned empty ({}ms)", elapsed.as_millis());
+    } else {
+        tracing::debug!("Parakeet: {} ({}ms)", result.text.trim(), elapsed.as_millis());
+    }
+    Ok(result.text.trim().to_string())
 }
 
 // ============================================================
@@ -256,5 +301,53 @@ async fn transcribe_groq(config: &Config, audio_wav: &[u8]) -> Result<String> {
 
     let text = result.text.trim().to_string();
     debug!("Groq STT: {}", text);
+    Ok(text)
+}
+
+// ============================================================
+// z.ai ASR API (cloud)
+// ============================================================
+
+async fn transcribe_zai(config: &Config, audio_wav: &[u8]) -> Result<String> {
+    let url = format!("{}/audio/transcriptions", config.openai_base_url.trim_end_matches('/'));
+
+    let part = reqwest::multipart::Part::bytes(audio_wav.to_vec())
+        .file_name("audio.wav")
+        .mime_str("audio/wav")
+        .context("Failed to create multipart part")?;
+
+    let form = reqwest::multipart::Form::new()
+        .part("file", part)
+        .text("model", "glm-asr-2512".to_string())
+        .text("language", config.whisper_language.clone())
+        .text("response_format", "json");
+
+    let client = reqwest::Client::new();
+    let response = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", config.openai_api_key))
+        .multipart(form)
+        .send()
+        .await
+        .context("Failed to send STT request to z.ai")?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        anyhow::bail!("z.ai STT API error {}: {}", status, body);
+    }
+
+    #[derive(Deserialize)]
+    struct TranscriptionResponse {
+        text: String,
+    }
+
+    let result: TranscriptionResponse = response
+        .json()
+        .await
+        .context("Failed to parse z.ai STT response")?;
+
+    let text = result.text.trim().to_string();
+    debug!("z.ai STT: {}", text);
     Ok(text)
 }
