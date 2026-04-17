@@ -152,13 +152,23 @@ pub async fn generate_response(
     config: &Config,
     messages: &[ChatMessage],
 ) -> Result<String> {
+    generate_response_with_options(config, messages, 500).await
+}
+
+/// Generate a response with a custom `max_tokens` limit.
+/// Use for long-form outputs (CV parsing, reports) that exceed the default 500 tokens.
+pub async fn generate_response_with_options(
+    config: &Config,
+    messages: &[ChatMessage],
+    max_tokens: u32,
+) -> Result<String> {
     let url = format!("{}/chat/completions", config.openai_base_url.trim_end_matches('/'));
 
     let request = ChatRequest {
         model: config.openai_model.clone(),
         messages: messages.to_vec(),
         stream: false,
-        max_tokens: 500,
+        max_tokens,
     };
 
     let client = reqwest::Client::builder()

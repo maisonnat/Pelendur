@@ -4,6 +4,7 @@ use anyhow::{Context, Result};
 pub enum SttProvider {
     Groq,
     Local,
+    Zai,
 }
 
 #[derive(Debug, Clone)]
@@ -19,10 +20,16 @@ pub struct Config {
     pub whisper_model_path: String,
     pub whisper_language: String,
 
+    // Local Parakeet ONNX
+    pub parakeet_model_dir: String,
+
     // LLM
     pub openai_api_key: String,
     pub openai_model: String,
     pub openai_base_url: String,
+
+    // Embeddings (uses OpenAI-compatible API)
+    pub embedding_model: Option<String>,
 }
 
 impl Config {
@@ -35,12 +42,14 @@ impl Config {
             .as_str()
         {
             "groq" => SttProvider::Groq,
-            _ => SttProvider::Local,
+            "zai" => SttProvider::Zai,
+            _ => SttProvider::Local, // Local STT (whisper.cpp or Parakeet ONNX)
         };
 
         // Groq keys only required if using Groq
         let groq_api_key = if stt_provider == SttProvider::Groq {
-            std::env::var("GROQ_API_KEY").context("GROQ_API_KEY not set in .env (required when STT_PROVIDER=groq)")?
+            std::env::var("GROQ_API_KEY")
+                .context("GROQ_API_KEY not set in .env (required when STT_PROVIDER=groq)")?
         } else {
             String::new()
         };
@@ -54,12 +63,27 @@ impl Config {
                 .unwrap_or_else(|_| "models/ggml-base.en.bin".to_string()),
             whisper_language: std::env::var("WHISPER_LANGUAGE")
                 .unwrap_or_else(|_| "en".to_string()),
+            parakeet_model_dir: std::env::var("PARAKEET_MODEL_DIR").unwrap_or_else(|_| {
+                // Default: ~/.local/share/pelendur/models/parakeet on Linux
+                // Default: %APPDATA%/pelendur/models/parakeet on Windows
+                let base = std::env::var("XDG_DATA_HOME")
+                    .ok()
+                    .or_else(|| std::env::var("APPDATA").ok())
+                    .unwrap_or_else(|| {
+                        format!(
+                            "{}/.local/share",
+                            std::env::var("HOME").unwrap_or_else(|_| ".".to_string())
+                        )
+                    });
+                format!("{}/pelendur/models/parakeet", base)
+            }),
             openai_api_key: std::env::var("OPENAI_API_KEY")
                 .unwrap_or_else(|_| "ollama".to_string()),
             openai_model: std::env::var("OPENAI_MODEL")
-                .unwrap_or_else(|_| "qwen2.5:7b".to_string()),
+                .unwrap_or_else(|_| "qwen3:4b-instruct".to_string()),
             openai_base_url: std::env::var("OPENAI_BASE_URL")
                 .unwrap_or_else(|_| "http://localhost:11434/v1".to_string()),
+            embedding_model: std::env::var("OPENAI_EMBEDDING_MODEL").ok(),
         })
     }
 }

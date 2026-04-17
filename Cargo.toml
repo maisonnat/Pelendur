@@ -5,21 +5,37 @@ edition = "2021"
 description = "GhostAI pilot — real-time system audio → STT → LLM pipeline"
 
 [features]
-default = ["audio"]
-audio = ["cpal", "wasapi"]
+default = ["audio", "parakeet"]
+audio = ["cpal"]
+wasapi_loopback = ["wasapi", "sysinfo"]
+linux_audio = []
+parakeet = ["dep:ort", "dep:ndarray", "dep:thiserror", "dep:regex"]
+parakeet_cuda = ["parakeet", "ort/cuda"]
 
 [dependencies]
 cpal = { version = "0.15", optional = true }
 wasapi = { version = "0.23", optional = true }
-sysinfo = "0.35"
+sysinfo = { version = "0.35", optional = true }
 tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.12", default-features = false, features = ["json", "multipart", "stream", "rustls-tls"] }
 futures = "0.3"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+serde_yaml = "0.9"
 hound = "3.5"
 dotenvy = "0.15"
 anyhow = "1"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 chrono = "0.4"
+tempfile = "3"
+ort = { version = "=2.0.0-rc.12", optional = true, features = ["download-binaries", "ndarray"] }
+ndarray = { version = "0.17", optional = true }
+thiserror = { version = "2", optional = true }
+regex = { version = "1", optional = true }
+candle-core = { version = "0.4", optional = true }
+tokenizers = { version = "0.15", optional = true }
+rusqlite = { version = "0.31", features = ["bundled"] }
+strsim = "0.11"
+uuid = { version = "1", features = ["v4"] }
+pdf-extract = "0.7"

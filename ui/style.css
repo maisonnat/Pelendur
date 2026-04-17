@@ -1,40 +1,365 @@
-/* Native Vibrancy will handle the blur. We just need semi-transparent backgrounds. */
+:root {
+  --bg-color: rgba(10, 10, 10, 0.7);
+  --accent-color: #ffd700;
+  --text-main: #ffffff;
+  --text-dim: rgba(255, 255, 255, 0.4);
+  --text-me: rgba(255, 255, 255, 0.15);
+  --card-bg: rgba(30, 30, 30, 0.85);
+}
+
 body {
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   margin: 0;
-  padding: 0;
+  padding: 10px;
   overflow: hidden;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  /* Make the body fully transparent */
   background: transparent;
+  color: var(--text-main);
+  user-select: none;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
   height: 100vh;
-  /* This ensures the whole body area can be used for dragging if needed, but we used it in body tag as well */
 }
 
-.hud-container {
-  margin-top: 10px;
+body.locked {
+  pointer-events: none;
+}
+
+/* El contenedor principal de sugerencias (Lo más importante) */
+#suggestions-feed {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.suggestion-card {
+  background: var(--card-bg);
+  border-left: 4px solid var(--accent-color);
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5);
   width: 90%;
-  max-width: 700px;
-  /* Semi-transparent background for readability on vibrancy */
-  background: rgba(30, 30, 30, 0.4);
+  animation: fadeIn 0.5s ease-out;
+  backdrop-filter: blur(10px);
+}
+
+.card-content {
+  font-size: 1.4rem;
+  line-height: 1.4;
+  font-weight: 500;
+  color: var(--accent-color);
+}
+
+/* El feed de transcripción (Secundario) */
+#transcription-feed {
+  height: 100px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column-reverse;
+  font-size: 0.9rem;
+  mask-image: linear-gradient(to top, black 50%, transparent 100%);
+}
+
+.transcription-item {
+  margin-bottom: 4px;
+  padding: 4px 10px;
+  border-radius: 4px;
+  animation: slideUp 0.3s ease-out;
+}
+
+/* Estilo para cuando habla el otro vs yo (Simulado por ahora) */
+.transcription-item.interviewer {
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.transcription-item.me {
+  color: var(--text-me);
+  font-style: italic;
+}
+
+/* Partial transcription overlay (live-updating during active speech) */
+.partial-transcription {
+  padding: 8px 12px;
+  margin: 4px 0;
+  background: rgba(100, 100, 100, 0.3);
+  border-left: 3px solid rgba(100, 200, 255, 0.5);
+  border-radius: 4px;
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  font-style: italic;
+  min-height: 0;
+  max-height: 40px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.partial-transcription.partial-hidden {
+  opacity: 0;
+  transform: translateY(-3px);
+  pointer-events: none;
+}
+
+.partial-transcription.partial-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.listening-indicator {
+  color: rgba(100, 200, 255, 0.6);
+  font-size: 12px;
+  margin-right: 6px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+/* Controles y Status */
+.controls {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  display: flex;
+  gap: 8px;
+  opacity: 0.3;
+  transition: opacity 0.2s;
+}
+
+.profile-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 50;
+  font-size: 0.8rem;
+  padding: 6px 14px;
+  background: var(--card-bg);
+  color: var(--accent-color);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  opacity: 0.4;
+  transition: opacity 0.2s, background 0.2s;
+}
+
+.profile-btn:hover {
+  opacity: 1;
+  background: rgba(255, 215, 0, 0.15);
+}
+
+body:hover .controls {
+  opacity: 1;
+}
+
+button {
+  background: var(--card-bg);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.2);
+  padding: 5px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #333;
+}
+
+.status-bar {
+  position: absolute;
+  top: 5px;
+  left: 10px;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+#status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4CAF50;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Modals y utilitarios */
+.hidden { display: none; }
+#modal-overlay {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+  background: rgba(0,0,0,0.8); z-index: 100;
+}
+#process-modal {
+  position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: #222; padding: 20px; border-radius: 8px; z-index: 101;
+  width: 80%; max-height: 80%; overflow-y: auto;
+}
+.process-item {
+  padding: 10px; border-bottom: 1px solid #333; cursor: pointer;
+}
+.process-item:hover { background: #333; }
+.process-header {
+  padding: 10px; background: #111; font-size: 0.8rem; color: #888;
+}
+
+#knowledge-context-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  background: rgba(255, 215, 0, 0.08);
+  border: 1px solid rgba(255, 215, 0, 0.2);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.context-indicator {
+  color: rgba(255, 215, 0, 0.8);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.skill-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.knowledge-panel {
+  position: fixed;
+  right: 20px;
+  top: 80px;
+  width: 280px;
+  max-height: 400px;
+  background: rgba(20, 20, 30, 0.9);
+  border: 1px solid rgba(255, 215, 0, 0.3);
   border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  /* The drag region will be here too */
+  padding: 12px;
+  backdrop-filter: blur(10px);
+  overflow-y: auto;
+  z-index: 60;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
-.suggestions-feed {
-  color: #ffffff;
-  font-size: 1.1rem;
-  line-height: 1.5;
+.knowledge-panel.hidden {
+  opacity: 0;
+  transform: translateX(20px);
+  pointer-events: none;
 }
 
-.suggestion {
-  margin: 0;
+.knowledge-panel.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-weight: 600;
+  color: var(--accent-color, #ffd700);
+}
+
+.panel-header .icon {
+  font-size: 16px;
+}
+
+.panel-header .toggle-btn {
+  margin-left: auto;
+  background: transparent;
+  border: none;
+  color: var(--accent-color, #ffd700);
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 4px;
+}
+
+.panel-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.context-section {
+  margin-bottom: 8px;
+}
+
+.context-section.visible {
+  display: block;
+}
+
+.context-section.collapsible {
+  cursor: pointer;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
   padding: 4px 0;
 }
 
-/* NO backdrop-filter here to avoid artifacts on transparent windows. */
+.section-content {
+  margin-top: 8px;
+}
+
+.section-content.hidden {
+  display: none;
+}
+
+.skill-tag {
+  display: inline-block;
+  padding: 4px 8px;
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.4);
+  border-radius: 4px;
+  font-size: 12px;
+  margin: 2px;
+}
+
+.story-card {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+.story-title {
+  font-weight: 600;
+  color: var(--accent-color, #ffd700);
+  font-size: 13px;
+}
+
+.story-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.story-tag {
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+}

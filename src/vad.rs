@@ -43,9 +43,9 @@ impl VadDetector {
         }
     }
 
-    /// Default config: -35dB threshold, 1 chunk min speech, 2 chunks min silence
+    /// Default config: -45dB threshold (sensitive), 1 chunk min speech, 2 chunks min silence
     pub fn default_config() -> Self {
-        Self::new(-35.0, 1, 2)
+        Self::new(-45.0, 1, 2)
     }
 
     /// Process a chunk of audio samples. Returns a VadEvent.

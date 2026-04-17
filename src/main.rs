@@ -1,40 +1,96 @@
 mod audio;
+mod audio_config;
 mod config;
+mod knowledge;
 mod llm;
 mod loopback;
+#[cfg(feature = "linux_audio")]
+mod linux_audio;
 mod stt;
 mod vad;
+#[cfg(feature = "parakeet")]
+mod parakeet;
+
+#[cfg(feature = "parakeet")]
+mod parakeet_inference {
+    use std::sync::mpsc;
+    use tokio::sync::{oneshot, broadcast};
+    use anyhow::Result;
+
+    pub enum InferenceRequest {
+        /// Partial inference: fire-and-forget, result sent to broadcast channel
+        Partial {
+            samples: Vec<f32>,
+        },
+        /// Final inference: response expected via oneshot
+        Final {
+            samples: Vec<f32>,
+            response_tx: oneshot::Sender<Result<String>>,
+        },
+    }
+
+    pub type InferenceSender = mpsc::Sender<InferenceRequest>;
+    pub type PartialReceiver = broadcast::Receiver<String>;
+
+    pub fn spawn_inference_thread(model: crate::parakeet::ParakeetModel) -> (InferenceSender, broadcast::Sender<String>) {
+        let (tx, rx) = mpsc::channel::<InferenceRequest>();
+        let (partial_tx, _) = broadcast::channel::<String>(16);
+        let partial_tx_clone = partial_tx.clone();
+
+        std::thread::Builder::new()
+            .name("parakeet-inference".to_string())
+            .spawn(move || {
+                let mut model = model;
+                tracing::info!("Parakeet inference thread started");
+                while let Ok(req) = rx.recv() {
+                    match req {
+                        InferenceRequest::Partial { samples } => {
+                            if let Ok(text) = crate::stt::transcribe_parakeet_sync(&mut model, samples) {
+                                if !text.trim().is_empty() {
+                                    let _ = partial_tx_clone.send(text);
+                                }
+                            }
+                        }
+                        InferenceRequest::Final { samples, response_tx } => {
+                            let result = crate::stt::transcribe_parakeet_sync(&mut model, samples);
+                            let _ = response_tx.send(result);
+                        }
+                    }
+                }
+                tracing::info!("Parakeet inference thread stopped");
+            })
+            .expect("Failed to spawn parakeet inference thread");
+
+        (tx, partial_tx)
+    }
+}
+
+#[cfg(feature = "parakeet")]
+use parakeet::{ParakeetEngine, ParakeetModel};
 
 use anyhow::Result;
+use audio_config::AudioStrategy;
 use chrono::Local;
 use config::Config;
+use knowledge::personal::KnowledgeManager;
 use llm::ChatMessage;
-use std::sync::mpsc;
+use tokio::sync::mpsc;
 use tracing::{debug, info, warn, error};
 use tracing_subscriber::EnvFilter;
 
-const SYSTEM_PROMPT: &str = r#"You are a real-time meeting assistant. 
-You receive transcribed audio from a conversation and provide concise, helpful responses.
-IMPORTANT: Always respond in the SAME LANGUAGE as the transcribed text you receive.
-Be brief — 2-3 sentences max. Focus on being useful.
-If someone is asking a question, answer it directly.
-If someone is making a statement, provide a relevant follow-up or insight.
-If the transcription seems unclear or garbled, say so briefly."#;
-
-/// Capture mode — either single device or dual (mic + app loopback)
+/// Capture mode — either single device or dual (mic + system audio)
 enum CaptureMode {
-    /// Single audio source (microphone or system audio)
     Single(audio::Device),
-    /// Dual: microphone + per-application loopback
-    Dual(audio::Device, loopback::real::AudioProcess),
+    Dual(audio::Device, Option<u32>),
 }
 
-/// Prompt user for capture mode and device selection.
 fn select_capture_mode() -> Result<CaptureMode> {
+    let strategy = audio_config::detect_strategy()?;
+
     println!("  How do you want to capture audio?");
     println!();
     println!("    [1] Single device (microphone or system audio)");
-    println!("    [2] Meeting Mode — Mic + App Loopback (Zoom, Chrome, etc.)");
+    println!("    [2] Meeting Mode — Mic + System Audio ({})", strategy.name());
     println!();
     print!("  Select [1-2]: ");
     use std::io::Write;
@@ -45,19 +101,38 @@ fn select_capture_mode() -> Result<CaptureMode> {
     let input = input.trim();
 
     if input == "2" {
-        // Meeting Mode: select mic + app
         println!();
         println!("  Step 1: Select your microphone");
         println!();
         let mic_device = audio::select_device_interactive()?;
 
-        println!("  Step 2: Select the app to capture");
+        println!("  Step 2: Select system audio source");
         println!();
-        let app_process = loopback::real::select_audio_process()?;
+        let sources = strategy.list_sources();
+        if sources.is_empty() {
+            anyhow::bail!("No system audio sources found");
+        }
+        for (i, src) in sources.iter().enumerate() {
+            println!("    [{}] {}", i + 1, src.name);
+        }
+        println!();
 
-        Ok(CaptureMode::Dual(mic_device, app_process))
+        #[cfg(feature = "wasapi_loopback")]
+        {
+            let app_process = loopback::real::select_audio_process()?;
+            println!("  ✓ Selected: {} (PID: {})", app_process.name, app_process.pid);
+            return Ok(CaptureMode::Dual(mic_device, Some(app_process.pid)));
+        }
+
+        #[cfg(not(feature = "wasapi_loopback"))]
+        {
+            println!("  ✓ System audio capture via {}", strategy.name());
+            return Ok(CaptureMode::Dual(mic_device, None));
+        }
+
+        #[allow(unreachable_code)]
+        Ok(CaptureMode::Dual(mic_device, None))
     } else {
-        // Single mode: select device
         let device = audio::select_device_interactive()?;
         Ok(CaptureMode::Single(device))
     }
@@ -75,14 +150,60 @@ async fn main() -> Result<()> {
     // Load config
     let config = Config::from_env()?;
 
+    #[cfg(feature = "parakeet")]
+    let (inference_tx, partial_tx) = {
+        let engine = ParakeetEngine::new(
+            std::path::PathBuf::from(&config.parakeet_model_dir)
+        ).map_err(|e| anyhow::anyhow!("Failed to create Parakeet engine: {}", e))?;
+
+        if !engine.is_model_ready() {
+            tracing::warn!("Parakeet models not found. Downloading...");
+            engine.ensure_models().await?;
+            tracing::info!("Model download complete");
+        }
+
+        tracing::info!("Loading Parakeet model from {:?}", engine.model_dir());
+        let model = ParakeetModel::new(engine.model_dir(), true)
+            .map_err(|e| anyhow::anyhow!("Failed to load Parakeet model: {}", e))?;
+
+        parakeet_inference::spawn_inference_thread(model)
+    };
+
+    #[cfg(feature = "parakeet")]
+    {
+        let mut partial_display_rx = partial_tx.subscribe();
+        tokio::spawn(async move {
+            while let Ok(text) = partial_display_rx.recv().await {
+                let timestamp = Local::now().format("%H:%M:%S");
+                println!("[{}] 📝 ~ \"{}\"", timestamp, text);
+            }
+        });
+    }
+
+    // Initialize Knowledge Manager
+    let mut knowledge_manager = KnowledgeManager::new("knowledge");
+    if let Err(e) = knowledge_manager.load_personal_profile() {
+        warn!("Failed to load personal profile: {}", e);
+    } else {
+        info!("Personal profile loaded successfully");
+    }
+
+    let system_prompt = knowledge::personal::generate_system_prompt(&knowledge_manager);
+
     // Show STT provider
     let stt_label = match config.stt_provider {
         config::SttProvider::Groq => format!("Groq Whisper ({})", config.groq_stt_model),
-        config::SttProvider::Local => format!("whisper.cpp ({})", config.whisper_model_path),
+        config::SttProvider::Zai => "z.ai GLM-ASR-2512".to_string(),
+        config::SttProvider::Local => {
+            #[cfg(feature = "parakeet")]
+            { "Parakeet ONNX (local)".to_string() }
+            #[cfg(not(feature = "parakeet"))]
+            { format!("whisper.cpp ({})", config.whisper_model_path) }
+        }
     };
 
     println!("┌─────────────────────────────────────────────┐");
-    println!("│           GhostAI Audio Pilot               │");
+    println!("│               Pelendur                     │");
     println!("│   System Audio → STT → LLM Pipeline         │");
     println!("└─────────────────────────────────────────────┘");
     println!();
@@ -95,58 +216,75 @@ async fn main() -> Result<()> {
 
     println!();
     println!("  Starting audio capture...");
-    println!("  Speak or play audio. Press Ctrl+C to stop.");
-    println!();
-    println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
     println!();
 
     // Start audio capture(s) and create unified channel
-    let audio_rx: mpsc::Receiver<audio::AudioChunk> = match capture_mode {
+    let (audio_tx, mut audio_rx) = mpsc::channel::<audio::AudioChunk>(100);
+    
+    // IMPORTANT: We must keep these streams alive throughout main
+    let mut _active_streams = Vec::new();
+
+    match capture_mode {
         CaptureMode::Single(device) => {
-            // Simple: single capture, pass through directly
-            audio::start_capture(device)?
-        }
-        CaptureMode::Dual(mic_device, app_process) => {
-            // Dual: merge mic + loopback into a single channel
-            info!(
-                "Starting dual capture: mic + {} (PID {})",
-                app_process.name, app_process.pid
-            );
-
-            let mic_rx = audio::start_capture(mic_device)?;
-            let loop_rx =
-                loopback::real::start_loopback_capture(app_process.pid, true)?;
-
-            // Merge both into a single channel
-            let (merged_tx, merged_rx) = mpsc::channel();
-
-            // Forward mic audio
-            let mic_tx = merged_tx.clone();
+            let (rx, stream) = audio::start_capture(device)?;
+            _active_streams.push(stream);
+            let tx = audio_tx.clone();
             std::thread::Builder::new()
-                .name("mic-forward".to_string())
+                .name("audio-forward".to_string())
                 .spawn(move || {
-                    while let Ok(chunk) = mic_rx.recv() {
-                        if mic_tx.send(chunk).is_err() {
+                    while let Ok(chunk) = rx.recv() {
+                        if tx.blocking_send(chunk).is_err() {
                             break;
                         }
                     }
                 })?;
+        }
+        CaptureMode::Dual(mic_device, pid) => {
+            let strategy = match pid {
+                #[cfg(feature = "wasapi_loopback")]
+                Some(p) => {
+                    use audio_config::WindowsStrategy;
+                    Box::new(WindowsStrategy::new().with_process(p)) as Box<dyn AudioStrategy>
+                }
+                _ => audio_config::detect_strategy()?,
+            };
+            info!("Starting system audio capture via {}", strategy.name());
 
-            // Forward loopback audio
-            let loop_tx = merged_tx;
+            let loop_rx = strategy.start_system_capture()?;
+
+            // Try microphone as supplementary source
+            match audio::start_capture(mic_device) {
+                Ok((mic_rx, mic_stream)) => {
+                    info!("Dual capture: mic + loopback active");
+                    _active_streams.push(mic_stream);
+                    let mic_tx = audio_tx.clone();
+                    std::thread::Builder::new()
+                        .name("mic-forward".to_string())
+                        .spawn(move || {
+                            while let Ok(chunk) = mic_rx.recv() {
+                                if mic_tx.blocking_send(chunk).is_err() {
+                                    break;
+                                }
+                            }
+                        })?;
+                }
+                Err(e) => {
+                    warn!("Mic capture failed ({}), using loopback only", e);
+                }
+            }
+
+            let loop_tx = audio_tx;
             std::thread::Builder::new()
                 .name("loop-forward".to_string())
                 .spawn(move || {
                     while let Ok(chunk) = loop_rx.recv() {
-                        if loop_tx.send(chunk).is_err() {
+                        if loop_tx.blocking_send(chunk).is_err() {
                             break;
                         }
                     }
                 })?;
-
-            merged_rx
         }
-    };
+    }
 
     // Initialize VAD
     let mut vad_detector = vad::VadDetector::default_config();
@@ -155,119 +293,223 @@ async fn main() -> Result<()> {
     let mut conversation: Vec<ChatMessage> = vec![
         ChatMessage {
             role: "system".to_string(),
-            content: SYSTEM_PROMPT.to_string(),
+            content: system_prompt,
         },
     ];
 
     // Accumulate audio while speech is detected
-    let mut speech_buffer: Vec<f32> = Vec::with_capacity(16000 * 10); // Up to 10 seconds
+    let mut speech_buffer: Vec<f32> = Vec::with_capacity(16000 * 10);
     let mut is_capturing = false;
     let mut chunk_count: usize = 0;
+    #[cfg(feature = "parakeet")]
+    let mut last_partial_samples: usize = 0;
+
+    println!("  👂 Listening... (Audio levels every ~2s)");
+    println!("  Speak or play audio. Press Ctrl+C to stop.");
+    println!();
+    println!("─────────────────────────────────────────────");
+    println!();
 
     // Main processing loop
     loop {
-        // Receive audio chunk (blocking, 1 second chunks)
-        let chunk = match audio_rx.recv() {
-            Ok(c) => c,
-            Err(_) => {
-                warn!("Audio channel closed");
+        tokio::select! {
+            _ = tokio::signal::ctrl_c() => {
+                println!("\n  Stopping Pelendur...");
+                println!("  Saving interview session to knowledge base...");
+                
+                let session_title = format!("Interview Session {}", Local::now().format("%Y-%m-%d %H:%M"));
+                let mut session_content = String::from("# Interview Session Summary\n\n");
+                for msg in &conversation {
+                    if msg.role != "system" {
+                        session_content.push_str(&format!("**{}:** {}\n\n", msg.role.to_uppercase(), msg.content));
+                    }
+                }
+                
+                knowledge_manager.save_to_all(&session_title, &session_content);
+                println!("  ✓ Session saved. Goodbye!");
                 break;
             }
-        };
-
-        chunk_count += 1;
-
-        // Run VAD on this chunk
-        let vad_event = vad_detector.process(&chunk.samples);
-
-        match vad_event {
-            vad::VadEvent::SpeechStart => {
-                is_capturing = true;
-                speech_buffer.clear();
-                // Include the current chunk (it triggered speech detection)
-                speech_buffer.extend_from_slice(&chunk.samples);
-
-                let timestamp = Local::now().format("%H:%M:%S");
-                print!("[{}] 🎤 ", timestamp);
-                use std::io::Write;
-                std::io::stdout().flush().ok();
-            }
-            vad::VadEvent::SpeechEnd { duration_chunks: _ } => {
-                if is_capturing && !speech_buffer.is_empty() {
-                    is_capturing = false;
-
-                    println!("(processing...)");
-
-                    // 1. Encode accumulated audio to WAV
-                    let wav_bytes = stt::pcm_to_wav(&speech_buffer, chunk.sample_rate);
-
-                    // Skip very short audio (<0.5 seconds = ~8000 samples)
-                    if speech_buffer.len() < 8000 {
-                        debug!("Audio too short, skipping");
-                        continue;
+            
+            chunk = audio_rx.recv() => {
+                let chunk = match chunk {
+                    Some(c) => c,
+                    None => {
+                        warn!("Audio channel closed");
+                        break;
                     }
+                };
 
-                    // 2. Transcribe with STT
-                    let transcription = match stt::transcribe(&config, &wav_bytes).await {
-                        Ok(text) => text,
-                        Err(e) => {
-                            error!("STT failed: {}", e);
-                            continue;
-                        }
-                    };
+                chunk_count += 1;
+                let vad_event = vad_detector.process(&chunk.samples);
 
-                    if transcription.trim().is_empty() {
-                        continue;
-                    }
-
+                // Show audio level every 2 chunks (~2s) for debugging
+                if chunk_count % 2 == 0 {
+                    let rms: f32 = chunk.samples.iter().map(|s| s * s).sum::<f32>() / chunk.samples.len() as f32;
+                    let rms_db = 20.0 * rms.max(1e-10).log10();
                     let timestamp = Local::now().format("%H:%M:%S");
-                    println!("[{}] 📝 \"{}\"", timestamp, transcription);
+                    println!("[{}] 👂 Audio level: {:.1} dB (threshold: -45 dB)", timestamp, rms_db);
+                }
 
-                    // 3. Add to conversation and generate response
-                    conversation.push(ChatMessage {
-                        role: "user".to_string(),
-                        content: transcription.clone(),
-                    });
-
-                    // Keep conversation history manageable (last 20 messages)
-                    if conversation.len() > 21 {
-                        // Keep system prompt + last 20
-                        let mut trimmed = vec![conversation[0].clone()];
-                        trimmed.extend(conversation[conversation.len() - 20..].to_vec());
-                        conversation = trimmed;
+                match vad_event {
+                    vad::VadEvent::SpeechStart => {
+                        is_capturing = true;
+                        speech_buffer.clear();
+                        speech_buffer.extend_from_slice(&chunk.samples);
+                        let timestamp = Local::now().format("%H:%M:%S");
+                        print!("[{}] 🎙 ", timestamp);
+                        use std::io::Write;
+                        std::io::stdout().flush().ok();
                     }
+                    vad::VadEvent::SpeechEnd { duration_chunks: _ } => {
+                        if is_capturing && !speech_buffer.is_empty() {
+                            is_capturing = false;
+                            println!("(processing...)");
 
-                    let timestamp = Local::now().format("%H:%M:%S");
-                    print!("[{}] 🤖 ", timestamp);
+                            if speech_buffer.len() < 8000 {
+                                debug!("Audio too short, skipping");
+                                continue;
+                            }
 
-                    match llm::generate_response(&config, &conversation).await {
-                        Ok(response) => {
-                            println!("{}", response);
+                            #[cfg(feature = "parakeet")]
+                            let transcription = if config.stt_provider == config::SttProvider::Local {
+                                let (resp_tx, resp_rx) = tokio::sync::oneshot::channel();
+                                if inference_tx.send(parakeet_inference::InferenceRequest::Final {
+                                    samples: speech_buffer.clone(),
+                                    response_tx: resp_tx,
+                                }).is_err() {
+                                    error!("Inference channel closed");
+                                    continue;
+                                }
+                                match resp_rx.await {
+                                    Ok(Ok(text)) => text,
+                                    Ok(Err(e)) => {
+                                        error!("Parakeet inference failed: {}", e);
+                                        continue;
+                                    }
+                                    Err(_) => {
+                                        error!("Inference response dropped");
+                                        continue;
+                                    }
+                                }
+                            } else {
+                                let wav_bytes = match stt::pcm_to_wav(&speech_buffer, chunk.sample_rate) {
+                                    Ok(bytes) => bytes,
+                                    Err(e) => {
+                                        error!("WAV encoding failed: {}", e);
+                                        continue;
+                                    }
+                                };
+                                match stt::transcribe(&config, &wav_bytes).await {
+                                    Ok(text) => text,
+                                    Err(e) => {
+                                        error!("STT failed: {}", e);
+                                        continue;
+                                    }
+                                }
+                            };
+
+                            #[cfg(not(feature = "parakeet"))]
+                            let transcription = {
+                                let wav_bytes = match stt::pcm_to_wav(&speech_buffer, chunk.sample_rate) {
+                                    Ok(bytes) => bytes,
+                                    Err(e) => {
+                                        error!("WAV encoding failed: {}", e);
+                                        continue;
+                                    }
+                                };
+                                match stt::transcribe(&config, &wav_bytes).await {
+                                    Ok(text) => text,
+                                    Err(e) => {
+                                        error!("STT failed: {}", e);
+                                        continue;
+                                    }
+                                }
+                            };
+
+                            if transcription.trim().is_empty() {
+                                continue;
+                            }
+
+                            let timestamp = Local::now().format("%H:%M:%S");
+                            println!("[{}] 📝 \"{}\"", timestamp, transcription);
+
+                            // Match Knowledge (The Brain)
+                            let relevant_stories = if let Some(profile) = &knowledge_manager.personal_profile {
+                                profile.find_relevant_stories(&transcription)
+                            } else {
+                                vec![]
+                            };
+
+                            let external_knowledge = knowledge_manager.search_all(&transcription);
+
+                            if !relevant_stories.is_empty() || !external_knowledge.is_empty() {
+                                let mut context_msg = String::from("RELEVANT CONTEXT FOUND:\n");
+                                for story in relevant_stories {
+                                    context_msg.push_str(&format!("- STAR STORY [{}]: {} -> {}\n", 
+                                        story.id, story.situacion, story.resultado));
+                                }
+                                for ext in external_knowledge {
+                                    context_msg.push_str(&format!("- EXTERNAL: {}\n", ext));
+                                }
+                                
+                                conversation.push(ChatMessage {
+                                    role: "system".to_string(),
+                                    content: context_msg,
+                                });
+                            }
+
                             conversation.push(ChatMessage {
-                                role: "assistant".to_string(),
-                                content: response,
+                                role: "user".to_string(),
+                                content: transcription.clone(),
                             });
+
+                            if conversation.len() > 25 {
+                                let mut trimmed = vec![conversation[0].clone()];
+                                trimmed.extend(conversation[conversation.len() - 20..].to_vec());
+                                conversation = trimmed;
+                            }
+
+                            let timestamp = Local::now().format("%H:%M:%S");
+                            print!("[{}] 🤖 ", timestamp);
+
+                            match llm::generate_response(&config, &conversation).await {
+                                Ok(response) => {
+                                    println!("{}", response);
+                                    conversation.push(ChatMessage {
+                                        role: "assistant".to_string(),
+                                        content: response,
+                                    });
+                                }
+                                Err(e) => {
+                                    error!("LLM failed: {}", e);
+                                    println!("[error: {}]", e);
+                                }
+                            }
+
+                            println!();
+                            println!("---");
                         }
-                        Err(e) => {
-                            error!("LLM failed: {}", e);
-                            println!("[error: {}]", e);
+
+                        #[cfg(feature = "parakeet")]
+                        { last_partial_samples = 0; }
+                    }
+                    vad::VadEvent::Silence => {
+                        if is_capturing {
+                            speech_buffer.extend_from_slice(&chunk.samples);
+
+                            #[cfg(feature = "parakeet")]
+                            if config.stt_provider == config::SttProvider::Local {
+                                let new_samples = speech_buffer.len().saturating_sub(last_partial_samples);
+                                if new_samples >= 32000 && speech_buffer.len() >= 16000 {
+                                    tracing::trace!("Sending partial inference ({} samples)", speech_buffer.len());
+                                    let _ = inference_tx.send(parakeet_inference::InferenceRequest::Partial {
+                                        samples: speech_buffer.clone(),
+                                    });
+                                    last_partial_samples = speech_buffer.len();
+                                }
+                            }
                         }
                     }
-
-                    println!();
-                    println!("---");
-                }
-            }
-            vad::VadEvent::Silence => {
-                if is_capturing {
-                    // Accumulate audio while speaking
-                    speech_buffer.extend_from_slice(&chunk.samples);
-                }
-
-                // Periodic status (every ~30 seconds)
-                if !is_capturing && chunk_count % 30 == 0 {
-                    let timestamp = Local::now().format("%H:%M:%S");
-                    println!("[{}] 👂 Listening... ({}s captured)", timestamp, chunk_count);
                 }
             }
         }

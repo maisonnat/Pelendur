@@ -8,9 +8,65 @@
 </head>
 <body data-tauri-drag-region>
   <div id="hud-container" class="hud-container" data-tauri-drag-region>
-    <div class="suggestions-feed" id="suggestions-feed" data-tauri-drag-region>
-      <p class="suggestion" data-tauri-drag-region>Listening for suggestions...</p>
+    <button id="profile-btn" class="profile-btn icon-btn" title="Open Profile Management">Profile</button>
+    <div class="controls" data-tauri-drag-region>
+      <button id="audio-source-btn" class="icon-btn" title="Select Audio Source">🎧</button>
+      <button id="lock-btn" class="icon-btn" title="Lock/Unlock Click-through (Ctrl+Alt+L)">🔓</button>
+      <button id="clear-btn" class="icon-btn" title="Clear Feed">🗑️</button>
+      <button id="regenerate-btn" class="icon-btn" title="Regenerate Last Suggestion">🔄</button>
+      <div id="status-indicator" class="status-indicator">●</div>
+    </div>
+
+    <div id="knowledge-panel" class="knowledge-panel hidden">
+      <div class="panel-header">
+        <span class="icon">🧠</span>
+        <span>Contexto</span>
+        <button onclick="toggleKnowledgePanel()" class="toggle-btn">−</button>
+      </div>
+      
+      <div class="panel-content">
+        <div class="context-section" id="relevant-skills"></div>
+        
+        <div class="context-section collapsible" id="relevant-stories">
+          <div class="section-header" onclick="toggleSection('stories')">
+            ⭐ Historias (0)
+          </div>
+          <div class="section-content hidden" id="stories-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Process Selector Modal -->
+    <div id="modal-overlay" class="modal-overlay hidden"></div>
+    <div id="process-modal" class="modal hidden">
+      <div class="modal-header">
+        <span>Select Audio Source</span>
+        <button id="close-modal-btn" class="close-btn">&times;</button>
+      </div>
+      <div id="process-list" class="process-list">
+        <!-- Processes populated here -->
+      </div>
+    </div>
+
+    <div class="main-content" data-tauri-drag-region>
+      <div id="knowledge-context-bar" class="context-bar hidden">
+        <span id="context-indicator" class="context-indicator"></span>
+        <div id="skill-tags" class="skill-tags"></div>
+      </div>
+      <div id="suggestions-feed" class="suggestions-feed" data-tauri-drag-region>
+        <div class="suggestion-card" data-tauri-drag-region>
+          <div class="card-content" id="main-suggestion">Cargando Pelendur...</div>
+        </div>
+      </div>
+
+      <div id="partial-transcription" class="partial-transcription partial-hidden"></div>
+
+      <div id="transcription-feed" class="transcription-feed" data-tauri-drag-region>
+        <!-- Transcribed text appears here -->
+      </div>
     </div>
   </div>
+  
+  <script src="main.js"></script>
 </body>
 </html>
