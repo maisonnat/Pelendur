@@ -1,292 +1,317 @@
-//! Per-application audio loopback capture using WASAPI.
+//! WASAPI Loopback Capture — System audio interception.
 //!
-//! Captures audio from a specific process (Zoom, Chrome, etc.)
-//! using Windows WASAPI Process Loopback mode.
+//! Architecture follows Windows Core Audio best practices:
+//!   1. COM MTA initialization (CoInitializeEx, COINIT_MULTITHREADED)
+//!   2. Default render endpoint enumeration (IMMDeviceEnumerator)
+//!   3. Mix format negotiation (IAudioClient::GetMixFormat — shared mode)
+//!   4. Event-driven capture (AUDCLNT_STREAMFLAGS_EVENTCALLBACK + CreateEvent)
+//!   5. MMCSS thread priority (AvSetMmThreadCharacteristics "Pro Audio")
+//!   6. Graceful device invalidation recovery (AUDCLNT_E_DEVICE_INVALIDATED)
+//!
+//! Captures ALL audio playing through the default output device
+//! (USB headset, Bluetooth, speakers).
 
-#[cfg(feature = "wasapi_loopback")]
-pub mod real {
-    use crate::audio::AudioChunk;
-    use anyhow::{anyhow, Result};
-    use std::collections::VecDeque;
-    use std::sync::mpsc;
-    use sysinfo::System;
-    use tracing::{debug, info, warn};
-    use wasapi::*;
+use crate::audio::AudioChunk;
+use anyhow::{anyhow, Result};
+use std::sync::mpsc;
 
-    /// Information about a process that might be producing audio.
-    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-    pub struct AudioProcess {
-        pub pid: u32,
-        pub name: String,
-    }
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct AudioProcess {
+    pub pid: u32,
+    pub name: String,
+}
 
-    /// List processes that might be producing audio.
-    /// Returns all running processes (we can't easily detect which ones have audio,
-    /// so we filter by common audio app names).
-    pub fn list_audio_processes() -> Vec<AudioProcess> {
-        let mut sys = System::new_all();
-        sys.refresh_all();
+/// Process-level filtering not yet implemented.
+/// Loopback captures the full system mix.
+pub fn list_audio_processes() -> Vec<AudioProcess> {
+    vec![]
+}
 
-        let audio_keywords = [
-            "zoom", "chrome", "firefox", "teams", "slack", "discord", "spotify", "youtube", "edge",
-            "opera", "brave", "vlc", "mpv", "obs", "skype", "telegram", "whatsapp", "notion",
-        ];
+// ═══════════════════════════════════════════════════════════════════════════
+//  Windows Implementation
+// ═══════════════════════════════════════════════════════════════════════════
 
-        let mut processes: Vec<AudioProcess> = Vec::new();
-        for (pid, process) in sys.processes() {
-            let name = process.name().to_string_lossy().to_lowercase();
-            if audio_keywords.iter().any(|kw| name.contains(kw)) {
-                processes.push(AudioProcess {
-                    pid: pid.as_u32(),
-                    name: process.name().to_string_lossy().to_string(),
-                });
+#[cfg(target_os = "windows")]
+pub fn start_system_loopback_capture() -> Result<mpsc::Receiver<AudioChunk>> {
+    let (tx, rx) = mpsc::channel();
+
+    std::thread::Builder::new()
+        .name("wasapi-loopback".into())
+        .spawn(move || {
+            if let Err(e) = wasapi_loopback_thread(tx) {
+                eprintln!("  ❌ WASAPI loopback thread exited: {}", e);
             }
-        }
+        })?;
 
-        // If no known audio apps found, show all processes with PIDs > 1000
-        if processes.is_empty() {
-            for (pid, process) in sys.processes() {
-                let pid_val = pid.as_u32();
-                if pid_val > 1000 && !process.name().to_string_lossy().contains("System") {
-                    processes.push(AudioProcess {
-                        pid: pid_val,
-                        name: process.name().to_string_lossy().to_string(),
-                    });
-                }
+    Ok(rx)
+}
+
+#[cfg(target_os = "windows")]
+fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
+    use windows::Win32::Media::Audio::*;
+    use windows::Win32::System::Com::*;
+    use windows::Win32::Foundation::*;
+    use windows::core::GUID;
+
+    // Raw FFI for functions not exposed by windows 0.58 features
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn CreateEventW(
+            lpEventAttributes: *mut std::ffi::c_void,
+            bManualReset: i32,
+            bInitialState: i32,
+            lpName: *const u16,
+        ) -> isize; // HANDLE
+
+        fn WaitForSingleObject(hHandle: isize, dwMilliseconds: u32) -> u32;
+
+        fn CloseHandle(hObject: isize) -> i32;
+    }
+
+    #[link(name = "avrt")]
+    extern "system" {
+        fn AvSetMmThreadCharacteristicsW(
+            TaskName: *const u16,
+            TaskIndex: *mut u32,
+        ) -> isize; // HANDLE
+
+        fn AvRevertMmThreadCharacteristics(AvrtHandle: isize) -> i32;
+    }
+
+    const INFINITE: u32 = 0xFFFFFFFF;
+    const WAIT_OBJECT_0: u32 = 0;
+    const WAIT_TIMEOUT: u32 = 0x00000102;
+
+    // ── Step 1: COM MTA initialization ──────────────────────────────────
+    // Multi-Threaded Apartment avoids STA message-pump latency.
+    unsafe {
+        CoInitializeEx(None, COINIT_MULTITHREADED).ok()?;
+    }
+
+    // ── Step 2: Enumerate default render endpoint ───────────────────────
+    let enumerator: IMMDeviceEnumerator =
+        unsafe { CoCreateInstance(&MMDeviceEnumerator, None, CLSCTX_ALL)? };
+
+    let device = unsafe {
+        enumerator
+            .GetDefaultAudioEndpoint(eRender, eConsole)
+            .map_err(|e| anyhow!("No default render endpoint: {:?}", e))?
+    };
+
+    // ── Step 3: Activate IAudioClient + negotiate format ────────────────
+    let audio_client: IAudioClient = unsafe { device.Activate(CLSCTX_ALL, None)? };
+
+    // Get the audio engine's mix format (mandatory for shared mode)
+    let mix_format = unsafe { audio_client.GetMixFormat()? };
+    let pwfx = unsafe { &*mix_format };
+    let sample_rate = pwfx.nSamplesPerSec;
+    let channels = pwfx.nChannels;
+    let block_align = pwfx.nBlockAlign as usize;
+    let bits_per_sample = pwfx.wBitsPerSample as usize;
+    let bytes_per_sample = bits_per_sample / 8;
+
+    println!(
+        "  🔊 WASAPI: {}Hz, {}ch, {}bit (mix format)",
+        sample_rate, channels, bits_per_sample
+    );
+
+    // ── Step 4: Initialize with LOOPBACK + EVENTCALLBACK ────────────────
+    const AUDCLNT_STREAMFLAGS_LOOPBACK: u32 = 0x00010000;
+    const AUDCLNT_STREAMFLAGS_EVENTCALLBACK: u32 = 0x00040000;
+    let stream_flags = AUDCLNT_STREAMFLAGS_LOOPBACK | AUDCLNT_STREAMFLAGS_EVENTCALLBACK;
+
+    // Buffer = 1 second (in 100ns reftime units)
+    let buffer_duration: i64 = 10_000_000;
+
+    unsafe {
+        audio_client.Initialize(
+            AUDCLNT_SHAREMODE_SHARED,
+            stream_flags,
+            buffer_duration,
+            0,
+            pwfx,
+            None as Option<*const GUID>,
+        )?
+    };
+
+    // ── Step 5: Create Win32 event + bind + get capture client ──────────
+    let event_handle = unsafe { CreateEventW(std::ptr::null_mut(), 0, 0, std::ptr::null()) };
+    if event_handle == 0 {
+        return Err(anyhow!("CreateEventW failed"));
+    }
+
+    unsafe {
+        audio_client.SetEventHandle(HANDLE(event_handle as *mut std::ffi::c_void))?;
+    }
+
+    let capture_client: IAudioCaptureClient = unsafe { audio_client.GetService()? };
+
+    // ── Step 6: MMCSS "Pro Audio" thread priority ───────────────────────
+    let mut task_index: u32 = 0;
+    let pro_audio: Vec<u16> = "Pro Audio\0".encode_utf16().collect();
+    let mmcss_handle =
+        unsafe { AvSetMmThreadCharacteristicsW(pro_audio.as_ptr(), &mut task_index) };
+
+    let mmcss_active = mmcss_handle != 0;
+    if mmcss_active {
+        println!("  🔊 WASAPI: MMCSS Pro Audio priority active");
+    } else {
+        println!("  ⚠️  WASAPI: MMCSS failed (non-fatal), continuing at normal priority");
+    }
+
+    // ── Step 7: Start capture loop ──────────────────────────────────────
+    unsafe { audio_client.Start()? };
+    println!("  🔊 WASAPI: Loopback capture started ✅");
+
+    // Accumulate ~1 second of audio before sending a chunk
+    let frames_per_chunk = sample_rate as usize;
+    let mut pcm_buffer: Vec<u8> = Vec::with_capacity(block_align * frames_per_chunk);
+
+    loop {
+        // Sleep until the audio engine signals new data (event-driven)
+        let wait_result = unsafe { WaitForSingleObject(event_handle, INFINITE) };
+
+        if wait_result != WAIT_OBJECT_0 {
+            if wait_result == WAIT_TIMEOUT {
+                continue;
             }
-            processes.truncate(20); // Limit to 20
+            // Unexpected wait result — exit gracefully
+            break;
         }
 
-        processes.sort_by(|a, b| a.name.cmp(&b.name));
-        processes
-    }
-
-    /// Interactive selector for audio processes.
-    /// Accepts either a list index (1-N) or a direct PID number.
-    pub fn select_audio_process() -> Result<AudioProcess> {
-        let processes = list_audio_processes();
-
-        if processes.is_empty() {
-            return Err(anyhow!("No audio processes found"));
-        }
-
-        println!("  Active audio applications:");
-        println!();
-
-        for (i, proc) in processes.iter().enumerate() {
-            println!("    [{}] {} (PID: {})", i + 1, proc.name, proc.pid);
-        }
-
-        println!();
-        print!(
-            "  Select app [1-{}] or type a PID directly: ",
-            processes.len()
-        );
-        use std::io::Write;
-        std::io::stdout().flush().ok();
-
-        let mut input = String::new();
-        std::io::stdin().read_line(&mut input).ok();
-        let input = input.trim();
-
-        let num: u32 = input.parse().map_err(|_| anyhow!("Invalid number"))?;
-
-        // If the number is within list range, use it as index
-        // Otherwise treat it as a direct PID
-        let selected = if num >= 1 && (num as usize) <= processes.len() {
-            processes[(num as usize) - 1].clone()
-        } else {
-            // Treat as PID — find it in the list or create a placeholder
-            if let Some(proc) = processes.iter().find(|p| p.pid == num) {
-                proc.clone()
-            } else {
-                // PID not in list — create entry and try anyway
-                println!(
-                    "  ⚠ PID {} not in audio list, attempting capture anyway...",
-                    num
-                );
-                AudioProcess {
-                    pid: num,
-                    name: format!("PID {}", num),
-                }
-            }
-        };
-
-        println!("  ✓ Selected: {} (PID: {})", selected.name, selected.pid);
-        println!();
-
-        Ok(selected)
-    }
-
-    /// Start loopback capture for a specific process.
-    /// Returns a receiver that yields AudioChunk frames.
-    /// Runs the capture loop on a separate thread (AudioClient is !Send).
-    pub fn start_loopback_capture(
-        process_id: u32,
-        include_tree: bool,
-    ) -> Result<mpsc::Receiver<AudioChunk>> {
-        // Try to get the mix format from the loopback client
-        // We need to initialize COM on the capture thread
-        let (tx, rx) = mpsc::channel();
-
-        std::thread::Builder::new()
-            .name("loopback-capture".to_string())
-            .spawn(move || {
-                if let Err(e) = capture_thread(process_id, include_tree, tx) {
-                    warn!("Loopback capture error: {}", e);
-                }
-            })?;
-
-        Ok(rx)
-    }
-
-    fn capture_thread(
-        process_id: u32,
-        include_tree: bool,
-        tx: mpsc::Sender<AudioChunk>,
-    ) -> Result<()> {
-        let _ = initialize_mta().ok(); // Don't fail on COM init, may already be initialized
-
-        info!(
-            "Starting loopback capture for PID {} (include_tree: {})",
-            process_id, include_tree
-        );
-
-        let mut audio_client =
-            AudioClient::new_application_loopback_client(process_id, include_tree)
-                .map_err(|e| anyhow!("Failed to create loopback client: {:?}", e))?;
-
-        // NOTE: get_mixformat() returns E_NOTIMPL for application loopback clients.
-        // Use a standard format and let autoconvert handle the conversion.
-        let sample_rate: usize = 44100;
-        let channels: usize = 2;
-
-        let desired_format =
-            WaveFormat::new(32, 32, &SampleType::Float, sample_rate, channels, None);
-
-        let buffer_duration_hns = 200_000; // 20ms
-
-        let mode = StreamMode::PollingShared {
-            autoconvert: true,
-            buffer_duration_hns,
-        };
-
-        audio_client
-            .initialize_client(&desired_format, &Direction::Capture, &mode)
-            .map_err(|e| anyhow!("Failed to initialize loopback client: {:?}", e))?;
-
-        info!("Loopback capture: {}Hz, {} ch", sample_rate, channels);
-
-        let capture_client = audio_client
-            .get_audiocaptureclient()
-            .map_err(|e| anyhow!("Failed to get capture client: {:?}", e))?;
-
-        audio_client
-            .start_stream()
-            .map_err(|e| anyhow!("Failed to start stream: {:?}", e))?;
-
-        let blockalign = desired_format.get_blockalign() as usize;
-        let mut sample_queue: VecDeque<u8> = VecDeque::with_capacity(
-            blockalign * sample_rate as usize * 2, // 2 seconds buffer
-        );
-
-        let chunk_size = sample_rate as usize; // 1 second chunks
-        let channels_u16 = channels;
-
-        use std::time::{Duration, Instant};
-
-        let mut last_data_time = Instant::now();
-        const STALL_TIMEOUT: Duration = Duration::from_secs(3);
-        const POLL_INTERVAL: Duration = Duration::from_millis(3);
-
+        // Read ALL available packets from the capture buffer
         loop {
-            // Check for available packets
-            let packet_frames = capture_client
-                .get_next_packet_size()
-                .map_err(|e| anyhow!("Failed to get packet size: {:?}", e))?
-                .unwrap_or(0);
+            let mut data_ptr: *mut u8 = std::ptr::null_mut();
+            let mut num_frames: u32 = 0;
+            let mut flags: u32 = 0;
 
-            if packet_frames > 0 {
-                last_data_time = Instant::now();
-                capture_client
-                    .read_from_device_to_deque(&mut sample_queue)
-                    .map_err(|e| anyhow!("Failed to read from device: {:?}", e))?;
+            let hr = unsafe {
+                capture_client.GetBuffer(
+                    &mut data_ptr,
+                    &mut num_frames,
+                    &mut flags,
+                    None,
+                    None,
+                )
+            };
+
+            if let Err(e) = hr {
+                let code = e.code().0 as u32;
+                // AUDCLNT_S_BUFFER_EMPTY (0x088001) — no more packets, expected
+                if code == 0x088001 {
+                    break;
+                }
+                // AUDCLNT_E_DEVICE_INVALIDATED (0x88890004) — device disconnected
+                if code == 0x88890004 {
+                    eprintln!("  ⚠️  WASAPI: Device invalidated (disconnected?)");
+                    let _ = tx.send(AudioChunk {
+                        samples: vec![],
+                        sample_rate,
+                    });
+                    break;
+                }
+                eprintln!("  ⚠️  WASAPI GetBuffer error: 0x{:08X}", code);
+                break;
             }
 
-            // Convert and send chunks
-            let bytes_per_chunk = blockalign * chunk_size;
-            while sample_queue.len() >= bytes_per_chunk {
-                let mut chunk_bytes = vec![0u8; bytes_per_chunk];
-                for byte in chunk_bytes.iter_mut() {
-                    *byte = sample_queue.pop_front().unwrap();
-                }
+            // Copy data from the capture buffer (unsafe slice construction)
+            if !data_ptr.is_null() && num_frames > 0 {
+                let byte_count = num_frames as usize * block_align;
+                let slice = unsafe { std::slice::from_raw_parts(data_ptr, byte_count) };
+                pcm_buffer.extend_from_slice(slice);
+            }
 
-                // Convert bytes to f32 samples
-                let samples: Vec<f32> = chunk_bytes
-                    .chunks_exact(4)
-                    .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
-                    .collect();
+            unsafe {
+                let _ = capture_client.ReleaseBuffer(num_frames);
+            }
 
-                // Mix to mono if stereo
-                let mono_samples = if channels_u16 > 1 {
+            // Send chunks when we accumulated ~1 second of audio
+            while pcm_buffer.len() >= block_align * frames_per_chunk {
+                let chunk_bytes: Vec<u8> =
+                    pcm_buffer.drain(..block_align * frames_per_chunk).collect();
+
+                // Convert PCM bytes → f32 samples
+                let samples: Vec<f32> = if bytes_per_sample == 4 {
+                    // IEEE f32 (WASAPI shared mode default)
+                    chunk_bytes
+                        .chunks_exact(4)
+                        .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
+                        .collect()
+                } else if bytes_per_sample == 2 {
+                    // PCM 16-bit → normalize to [-1.0, 1.0]
+                    chunk_bytes
+                        .chunks_exact(2)
+                        .map(|b| i16::from_le_bytes([b[0], b[1]]) as f32 / 32768.0)
+                        .collect()
+                } else {
+                    continue;
+                };
+
+                // Mix down to mono
+                let mono: Vec<f32> = if channels > 1 {
                     samples
-                        .chunks(channels_u16 as usize)
-                        .map(|frame| frame.iter().sum::<f32>() / channels_u16 as f32)
+                        .chunks(channels as usize)
+                        .map(|frame| frame.iter().sum::<f32>() / channels as f32)
                         .collect()
                 } else {
                     samples
                 };
 
-                let _ = tx.send(AudioChunk {
-                    samples: mono_samples,
-                    sample_rate: sample_rate as u32,
-                });
-            }
+                // Skip silence (RMS energy threshold)
+                let energy: f32 = mono.iter().map(|s| s * s).sum::<f32>() / mono.len() as f32;
+                if energy < 1e-6 {
+                    continue;
+                }
 
-            // Stall detection
-            if last_data_time.elapsed() > STALL_TIMEOUT {
-                warn!(
-                    "No audio data for {:?}, capture may be stalled",
-                    STALL_TIMEOUT
-                );
+                if tx
+                    .send(AudioChunk {
+                        samples: mono,
+                        sample_rate,
+                    })
+                    .is_err()
+                {
+                    // Receiver dropped — stop cleanly
+                    unsafe {
+                        let _ = audio_client.Stop();
+                    }
+                    if mmcss_active {
+                        unsafe {
+                            AvRevertMmThreadCharacteristics(mmcss_handle);
+                        }
+                    }
+                    unsafe {
+                        CloseHandle(event_handle);
+                    }
+                    println!("  🔊 WASAPI: Stopped (receiver dropped)");
+                    return Ok(());
+                }
             }
-
-            std::thread::sleep(POLL_INTERVAL);
         }
-
-        info!("Loopback capture thread ended");
-        Ok(())
     }
+
+    // ── Step 8: Cleanup ─────────────────────────────────────────────────
+    unsafe {
+        let _ = audio_client.Stop();
+    }
+    if mmcss_active {
+        unsafe {
+            AvRevertMmThreadCharacteristics(mmcss_handle);
+        }
+    }
+    unsafe {
+        CloseHandle(event_handle);
+    }
+    println!("  🔊 WASAPI: Capture ended cleanly");
+    Ok(())
 }
 
-// Stub when wasapi is not available
-#[cfg(not(feature = "wasapi_loopback"))]
-pub mod real {
-    use anyhow::{anyhow, Result};
-    use std::sync::mpsc;
+// ═══════════════════════════════════════════════════════════════════════════
+//  Linux stub
+// ═══════════════════════════════════════════════════════════════════════════
 
-    #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-    pub struct AudioProcess {
-        pub pid: u32,
-        pub name: String,
-    }
-
-    pub fn list_audio_processes() -> Vec<AudioProcess> {
-        vec![]
-    }
-
-    pub fn select_audio_process() -> Result<AudioProcess> {
-        Err(anyhow!(
-            "WASAPI loopback not available (feature 'wasapi' disabled)"
-        ))
-    }
-
-    pub fn start_loopback_capture(
-        _process_id: u32,
-        _include_tree: bool,
-    ) -> Result<mpsc::Receiver<crate::audio::AudioChunk>> {
-        Err(anyhow!(
-            "WASAPI loopback not available (feature 'wasapi' disabled)"
-        ))
-    }
+#[cfg(not(target_os = "windows"))]
+pub fn start_system_loopback_capture() -> Result<mpsc::Receiver<AudioChunk>> {
+    Err(anyhow!(
+        "WASAPI loopback is Windows-only. Use PulseAudio/PipeWire on Linux."
+    ))
 }

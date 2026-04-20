@@ -39,3 +39,11 @@ rusqlite = { version = "0.31", features = ["bundled"] }
 strsim = "0.11"
 uuid = { version = "1", features = ["v4"] }
 pdf-extract = "0.7"
+
+[target.'cfg(target_os = "windows")'.dependencies]
+windows = { version = "0.58", features = [
+    "Win32_Media_Audio",
+    "Win32_System_Com",
+    "Win32_Foundation",
+] }
+windows-core = "0.58"

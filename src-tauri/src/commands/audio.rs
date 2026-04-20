@@ -1,12 +1,12 @@
 use crate::state::{AppState, AudioDevice, StreamWrapper, TranscriptionPayload, SuggestionPayload};
-use ghostai_pilot::{audio, audio_config, config, knowledge, llm, loopback, stt, vad};
+use ghostai_pilot::{audio, config, knowledge, llm, loopback, stt, vad};
 use ghostai_pilot::llm::ChatMessage;
-use tauri::{AppHandle, Manager, State, WebviewWindow, Emitter};
+use tauri::{AppHandle, Manager, State, Emitter};
 use cpal::traits::{DeviceTrait, HostTrait};
 
 #[tauri::command]
-pub fn get_audio_processes() -> Result<Vec<loopback::real::AudioProcess>, String> {
-    Ok(loopback::real::list_audio_processes())
+pub fn get_audio_processes() -> Result<Vec<loopback::AudioProcess>, String> {
+    Ok(loopback::list_audio_processes())
 }
 
 #[tauri::command]
@@ -30,7 +30,7 @@ pub fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
 pub async fn start_capture(
     app_handle: AppHandle,
     state: State<'_, AppState>,
-    pid: Option<u32>,
+    mode: Option<String>,
     device_index: Option<usize>,
 ) -> Result<(), String> {
     let config = state.config.clone();
@@ -43,12 +43,18 @@ pub async fn start_capture(
         streams.clear();
     }
 
-    let (audio_rx, stream) = if let Some(_pid) = pid {
-        // pid parameter kept for API compatibility, but wasapi_loopback feature not active
-        let strategy = audio_config::detect_strategy().map_err(|e| e.to_string())?;
-        let rx = strategy.start_system_capture().map_err(|e| e.to_string())?;
-        (rx, None)
+    // Determine capture source: "system" = WASAPI loopback, "mic" = cpal microphone
+    let capture_mode = mode.unwrap_or_else(|| {
+        // Default to system loopback on Windows, mic on Linux
+        if cfg!(target_os = "windows") { "system".to_string() } else { "mic".to_string() }
+    });
+
+    let audio_rx = if capture_mode == "system" {
+        // WASAPI loopback — captures all audio playing through the output device
+        println!("  🔊 Starting WASAPI loopback capture (system audio)...");
+        loopback::start_system_loopback_capture().map_err(|e| format!("Loopback failed: {}", e))?
     } else {
+        // Microphone capture via cpal
         let host = cpal::default_host();
         let devices: Vec<_> = host.input_devices().map_err(|e| e.to_string())?.collect();
         let device = if let Some(idx) = device_index {
@@ -56,15 +62,14 @@ pub async fn start_capture(
         } else {
             audio::find_microphone_device().map_err(|e| e.to_string())?
         };
-        println!("  ⚙ Captura: {:?}", device.name().unwrap_or_default());
+        println!("  🎤 Captura mic: {:?}", device.name().unwrap_or_default());
         let (rx, stream) = audio::start_capture(device).map_err(|e| e.to_string())?;
-        (rx, Some(stream))
+        let mut streams = streams_lock.lock().map_err(|e| e.to_string())?;
+        streams.push(StreamWrapper(stream));
+        rx
     };
 
-    if let Some(s) = stream {
-        let mut streams = streams_lock.lock().map_err(|e| e.to_string())?;
-        streams.push(StreamWrapper(s));
-    }
+    println!("  ✅ Audio capture active (mode: {})", capture_mode);
 
     std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
