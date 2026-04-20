@@ -84,6 +84,27 @@ enum CaptureMode {
     Dual(audio::Device, Option<u32>),
 }
 
+/// Simple linear resampling: convert f32 samples from `source_rate` to 16000 Hz.
+/// Parakeet's nemo128 preprocessor expects 16 kHz input.
+fn resample_to_16k(samples: &[f32], source_rate: u32) -> Vec<f32> {
+    const TARGET_RATE: u32 = 16000;
+    if source_rate == TARGET_RATE {
+        return samples.to_vec();
+    }
+    let ratio = TARGET_RATE as f64 / source_rate as f64;
+    let output_len = (samples.len() as f64 * ratio) as usize;
+    let mut output = Vec::with_capacity(output_len);
+    for i in 0..output_len {
+        let src_pos = i as f64 / ratio;
+        let idx = src_pos as usize;
+        let frac = src_pos - idx as f64;
+        let s0 = samples[idx];
+        let s1 = samples.get(idx + 1).copied().unwrap_or(s0);
+        output.push(s0 + (s1 - s0) * frac as f32);
+    }
+    output
+}
+
 fn select_capture_mode() -> Result<CaptureMode> {
     let strategy = audio_config::detect_strategy()?;
 
@@ -301,6 +322,7 @@ async fn main() -> Result<()> {
     let mut speech_buffer: Vec<f32> = Vec::with_capacity(16000 * 10);
     let mut is_capturing = false;
     let mut chunk_count: usize = 0;
+    let mut buffer_sample_rate: u32 = 16000; // track for resampling
     #[cfg(feature = "parakeet")]
     let mut last_partial_samples: usize = 0;
 
@@ -347,13 +369,14 @@ async fn main() -> Result<()> {
                     let rms: f32 = chunk.samples.iter().map(|s| s * s).sum::<f32>() / chunk.samples.len() as f32;
                     let rms_db = 20.0 * rms.max(1e-10).log10();
                     let timestamp = Local::now().format("%H:%M:%S");
-                    println!("[{}] 👂 Audio level: {:.1} dB (threshold: -45 dB)", timestamp, rms_db);
+                    println!("[{}] 👂 Audio level: {:.1} dB (threshold: -35 dB)", timestamp, rms_db);
                 }
 
                 match vad_event {
                     vad::VadEvent::SpeechStart => {
                         is_capturing = true;
                         speech_buffer.clear();
+                        buffer_sample_rate = chunk.sample_rate;
                         speech_buffer.extend_from_slice(&chunk.samples);
                         let timestamp = Local::now().format("%H:%M:%S");
                         print!("[{}] 🎙 ", timestamp);
@@ -372,9 +395,10 @@ async fn main() -> Result<()> {
 
                             #[cfg(feature = "parakeet")]
                             let transcription = if config.stt_provider == config::SttProvider::Local {
+                                let resampled = resample_to_16k(&speech_buffer, buffer_sample_rate);
                                 let (resp_tx, resp_rx) = tokio::sync::oneshot::channel();
                                 if inference_tx.send(parakeet_inference::InferenceRequest::Final {
-                                    samples: speech_buffer.clone(),
+                                    samples: resampled,
                                     response_tx: resp_tx,
                                 }).is_err() {
                                     error!("Inference channel closed");
@@ -502,8 +526,9 @@ async fn main() -> Result<()> {
                                 let new_samples = speech_buffer.len().saturating_sub(last_partial_samples);
                                 if new_samples >= 32000 && speech_buffer.len() >= 16000 {
                                     tracing::trace!("Sending partial inference ({} samples)", speech_buffer.len());
+                                    let resampled = resample_to_16k(&speech_buffer, buffer_sample_rate);
                                     let _ = inference_tx.send(parakeet_inference::InferenceRequest::Partial {
-                                        samples: speech_buffer.clone(),
+                                        samples: resampled,
                                     });
                                     last_partial_samples = speech_buffer.len();
                                 }
@@ -516,4 +541,42 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_resample_identity() {
+        // 16kHz → 16kHz should be passthrough
+        let samples = vec![0.5f32; 16000];
+        let result = resample_to_16k(&samples, 16000);
+        assert_eq!(result.len(), 16000);
+    }
+
+    #[test]
+    fn test_resample_48k_to_16k() {
+        // 48000 → 16000 = 1/3 ratio
+        let samples: Vec<f32> = (0..48000).map(|i| (i as f32 / 48000.0)).collect();
+        let result = resample_to_16k(&samples, 48000);
+        assert_eq!(result.len(), 16000);
+        // First sample should be ~0
+        assert!(result[0].abs() < 0.01);
+        // Last sample should be close to 1.0
+        assert!(*result.last().unwrap() > 0.9 || result.last().unwrap().abs() < 0.01);
+    }
+
+    #[test]
+    fn test_resample_44100_to_16k() {
+        // Loopback typical rate
+        let samples = vec![0.3f32; 44100];
+        let result = resample_to_16k(&samples, 44100);
+        let expected_len = (44100.0 * 16000.0 / 44100.0) as usize;
+        assert_eq!(result.len(), expected_len);
+        // All values should be ~0.3
+        for &s in &result {
+            assert!((s - 0.3).abs() < 0.01);
+        }
+    }
 }
