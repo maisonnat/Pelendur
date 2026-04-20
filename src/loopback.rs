@@ -39,11 +39,29 @@ pub fn start_system_loopback_capture() -> Result<mpsc::Receiver<AudioChunk>> {
         .name("wasapi-loopback".into())
         .spawn(move || {
             if let Err(e) = wasapi_loopback_thread(tx) {
-                eprintln!("  ❌ WASAPI loopback thread exited: {}", e);
+                wasapi_log(&format!("❌ WASAPI loopback thread exited: {}", e));
             }
         })?;
 
     Ok(rx)
+}
+
+#[cfg(target_os = "windows")]
+fn wasapi_log(msg: &str) {
+    eprintln!("{}", msg);
+    if let Ok(mut f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open("wasapi-debug.log")
+    {
+        use std::io::Write;
+        let _ = writeln!(
+            f,
+            "[{}] {}",
+            chrono::Local::now().format("%H:%M:%S%.3f"),
+            msg
+        );
+    }
 }
 
 #[cfg(target_os = "windows")]
@@ -70,23 +88,20 @@ fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
 
     #[link(name = "avrt")]
     extern "system" {
-        fn AvSetMmThreadCharacteristicsW(
-            TaskName: *const u16,
-            TaskIndex: *mut u32,
-        ) -> isize; // HANDLE
+        fn AvSetMmThreadCharacteristicsW(TaskName: *const u16, TaskIndex: *mut u32) -> isize;
 
         fn AvRevertMmThreadCharacteristics(AvrtHandle: isize) -> i32;
     }
 
     const INFINITE: u32 = 0xFFFFFFFF;
     const WAIT_OBJECT_0: u32 = 0;
-    const WAIT_TIMEOUT: u32 = 0x00000102;
 
     // ── Step 1: COM MTA initialization ──────────────────────────────────
-    // Multi-Threaded Apartment avoids STA message-pump latency.
+    wasapi_log("🔊 WASAPI: Starting COM MTA init...");
     unsafe {
         CoInitializeEx(None, COINIT_MULTITHREADED).ok()?;
     }
+    wasapi_log("🔊 WASAPI: COM MTA initialized ✅");
 
     // ── Step 2: Enumerate default render endpoint ───────────────────────
     let enumerator: IMMDeviceEnumerator =
@@ -97,42 +112,79 @@ fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
             .GetDefaultAudioEndpoint(eRender, eConsole)
             .map_err(|e| anyhow!("No default render endpoint: {:?}", e))?
     };
+    wasapi_log("🔊 WASAPI: Got default render endpoint ✅");
 
     // ── Step 3: Activate IAudioClient + negotiate format ────────────────
     let audio_client: IAudioClient = unsafe { device.Activate(CLSCTX_ALL, None)? };
 
     // Get the audio engine's mix format (mandatory for shared mode)
-    let mix_format = unsafe { audio_client.GetMixFormat()? };
-    let pwfx = unsafe { &*mix_format };
-    let sample_rate = pwfx.nSamplesPerSec;
-    let channels = pwfx.nChannels;
-    let block_align = pwfx.nBlockAlign as usize;
-    let bits_per_sample = pwfx.wBitsPerSample as usize;
+    let mix_format: *mut windows::Win32::Media::Audio::WAVEFORMATEX =
+        unsafe { audio_client.GetMixFormat()? };
+    let sample_rate = unsafe { std::ptr::addr_of!((*mix_format).nSamplesPerSec).read_unaligned() };
+    let channels = unsafe { std::ptr::addr_of!((*mix_format).nChannels).read_unaligned() };
+    let block_align =
+        unsafe { std::ptr::addr_of!((*mix_format).nBlockAlign).read_unaligned() as usize };
+    let bits_per_sample =
+        unsafe { std::ptr::addr_of!((*mix_format).wBitsPerSample).read_unaligned() as usize };
     let bytes_per_sample = bits_per_sample / 8;
+    let pwfx: *const windows::Win32::Media::Audio::WAVEFORMATEX = mix_format;
 
-    println!(
-        "  🔊 WASAPI: {}Hz, {}ch, {}bit (mix format)",
+    let fmt_tag = unsafe { std::ptr::addr_of!((*mix_format).wFormatTag).read_unaligned() };
+    let fmt_block_align =
+        unsafe { std::ptr::addr_of!((*mix_format).nBlockAlign).read_unaligned() };
+    let fmt_cb_size = unsafe { std::ptr::addr_of!((*mix_format).cbSize).read_unaligned() };
+
+    wasapi_log(&format!(
+        "🔊 WASAPI: {}Hz, {}ch, {}bit (mix format)",
         sample_rate, channels, bits_per_sample
-    );
+    ));
+    wasapi_log(&format!(
+        "🔊 WASAPI: wFormatTag={}, nBlockAlign={}, cbSize={}",
+        fmt_tag, fmt_block_align, fmt_cb_size
+    ));
 
     // ── Step 4: Initialize with LOOPBACK + EVENTCALLBACK ────────────────
-    const AUDCLNT_STREAMFLAGS_LOOPBACK: u32 = 0x00010000;
+    const AUDCLNT_STREAMFLAGS_LOOPBACK: u32 = 0x00020000;
     const AUDCLNT_STREAMFLAGS_EVENTCALLBACK: u32 = 0x00040000;
     let stream_flags = AUDCLNT_STREAMFLAGS_LOOPBACK | AUDCLNT_STREAMFLAGS_EVENTCALLBACK;
 
     // Buffer = 1 second (in 100ns reftime units)
     let buffer_duration: i64 = 10_000_000;
 
+    // Check if format is supported before Initialize (diagnostic)
+    let hr_check = unsafe { audio_client.IsFormatSupported(AUDCLNT_SHAREMODE_SHARED, pwfx, None) };
+    wasapi_log(&format!(
+        "🔊 WASAPI: IsFormatSupported(SHARED) = 0x{:08X}",
+        hr_check.0 as u32
+    ));
+
+    wasapi_log("🔊 WASAPI: Calling Initialize(LOOPBACK | EVENTCALLBACK)...");
     unsafe {
-        audio_client.Initialize(
-            AUDCLNT_SHAREMODE_SHARED,
-            stream_flags,
-            buffer_duration,
-            0,
-            pwfx,
-            None as Option<*const GUID>,
-        )?
+        audio_client
+            .Initialize(
+                AUDCLNT_SHAREMODE_SHARED,
+                stream_flags,
+                buffer_duration,
+                0,
+                pwfx,
+                None as Option<*const GUID>,
+            )
+            .map_err(|e| {
+                let code = e.code().0 as u32;
+                let msg = match code {
+                    0x80070057 => "Initialize E_INVALIDARG — bad format or flags",
+                    0x88890008 => "Initialize AUDCLNT_E_UNSUPPORTED_FORMAT",
+                    0x88890001 => "Initialize AUDCLNT_E_ALREADY_INITIALIZED",
+                    0x88890005 => "Initialize AUDCLNT_E_OUT_OF_ORDER",
+                    0x8889000A => "Initialize AUDCLNT_E_DEVICE_IN_USE",
+                    0x88890004 => "Initialize AUDCLNT_E_DEVICE_INVALIDATED",
+                    _ => "Initialize unknown error",
+                };
+                wasapi_log(&format!("❌ WASAPI {} (0x{:08X})", msg, code));
+                anyhow!("{} (0x{:08X})", msg, code)
+            })?
     };
+    wasapi_log("🔊 WASAPI: Initialize succeeded ✅");
 
     // ── Step 5: Create Win32 event + bind + get capture client ──────────
     let event_handle = unsafe { CreateEventW(std::ptr::null_mut(), 0, 0, std::ptr::null()) };
@@ -143,8 +195,10 @@ fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
     unsafe {
         audio_client.SetEventHandle(HANDLE(event_handle as *mut std::ffi::c_void))?;
     }
+    wasapi_log("🔊 WASAPI: Event handle bound ✅");
 
     let capture_client: IAudioCaptureClient = unsafe { audio_client.GetService()? };
+    wasapi_log("🔊 WASAPI: Got IAudioCaptureClient ✅");
 
     // ── Step 6: MMCSS "Pro Audio" thread priority ───────────────────────
     let mut task_index: u32 = 0;
@@ -154,28 +208,25 @@ fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
 
     let mmcss_active = mmcss_handle != 0;
     if mmcss_active {
-        println!("  🔊 WASAPI: MMCSS Pro Audio priority active");
+        wasapi_log("🔊 WASAPI: MMCSS Pro Audio priority active ✅");
     } else {
-        println!("  ⚠️  WASAPI: MMCSS failed (non-fatal), continuing at normal priority");
+        wasapi_log("⚠️ WASAPI: MMCSS failed (non-fatal), continuing at normal priority");
     }
 
     // ── Step 7: Start capture loop ──────────────────────────────────────
     unsafe { audio_client.Start()? };
-    println!("  🔊 WASAPI: Loopback capture started ✅");
+    wasapi_log("🔊 WASAPI: Loopback capture started ✅ — reading audio frames...");
 
     // Accumulate ~1 second of audio before sending a chunk
     let frames_per_chunk = sample_rate as usize;
     let mut pcm_buffer: Vec<u8> = Vec::with_capacity(block_align * frames_per_chunk);
+    let mut chunk_count: u64 = 0;
 
     loop {
         // Sleep until the audio engine signals new data (event-driven)
         let wait_result = unsafe { WaitForSingleObject(event_handle, INFINITE) };
 
         if wait_result != WAIT_OBJECT_0 {
-            if wait_result == WAIT_TIMEOUT {
-                continue;
-            }
-            // Unexpected wait result — exit gracefully
             break;
         }
 
@@ -186,13 +237,7 @@ fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
             let mut flags: u32 = 0;
 
             let hr = unsafe {
-                capture_client.GetBuffer(
-                    &mut data_ptr,
-                    &mut num_frames,
-                    &mut flags,
-                    None,
-                    None,
-                )
+                capture_client.GetBuffer(&mut data_ptr, &mut num_frames, &mut flags, None, None)
             };
 
             if let Err(e) = hr {
@@ -203,18 +248,18 @@ fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
                 }
                 // AUDCLNT_E_DEVICE_INVALIDATED (0x88890004) — device disconnected
                 if code == 0x88890004 {
-                    eprintln!("  ⚠️  WASAPI: Device invalidated (disconnected?)");
+                    wasapi_log("⚠️ WASAPI: Device invalidated (disconnected?)");
                     let _ = tx.send(AudioChunk {
                         samples: vec![],
                         sample_rate,
                     });
                     break;
                 }
-                eprintln!("  ⚠️  WASAPI GetBuffer error: 0x{:08X}", code);
+                wasapi_log(&format!("⚠️ WASAPI GetBuffer error: 0x{:08X}", code));
                 break;
             }
 
-            // Copy data from the capture buffer (unsafe slice construction)
+            // Copy data from the capture buffer
             if !data_ptr.is_null() && num_frames > 0 {
                 let byte_count = num_frames as usize * block_align;
                 let slice = unsafe { std::slice::from_raw_parts(data_ptr, byte_count) };
@@ -257,10 +302,17 @@ fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
                     samples
                 };
 
-                // Skip silence (RMS energy threshold)
+                // Calculate energy for logging (VAD handles silence detection now)
                 let energy: f32 = mono.iter().map(|s| s * s).sum::<f32>() / mono.len() as f32;
-                if energy < 1e-6 {
-                    continue;
+
+                chunk_count += 1;
+                if energy > 1e-6 && (chunk_count <= 5 || chunk_count % 100 == 0) {
+                    wasapi_log(&format!(
+                        "📊 WASAPI: Sent chunk #{} ({} samples, energy={:.6})",
+                        chunk_count,
+                        mono.len(),
+                        energy
+                    ));
                 }
 
                 if tx
@@ -282,7 +334,7 @@ fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
                     unsafe {
                         CloseHandle(event_handle);
                     }
-                    println!("  🔊 WASAPI: Stopped (receiver dropped)");
+                    wasapi_log("🔊 WASAPI: Stopped (receiver dropped)");
                     return Ok(());
                 }
             }
@@ -301,7 +353,7 @@ fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
     unsafe {
         CloseHandle(event_handle);
     }
-    println!("  🔊 WASAPI: Capture ended cleanly");
+    wasapi_log("🔊 WASAPI: Capture ended cleanly");
     Ok(())
 }
 

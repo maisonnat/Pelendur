@@ -56,6 +56,12 @@ fn run_migration_on_startup(knowledge_base_path: &str) {
 }
 
 fn main() {
+    // Set CDP debugging port for WebView2 (needed when launched from WSL where env vars don't propagate)
+    #[cfg(target_os = "windows")]
+    {
+        std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--remote-debugging-port=9224");
+    }
+    
     dotenvy::from_filename(".env").ok();
     let config = config::Config::from_env().expect("Failed config");
     let mut km = knowledge::personal::KnowledgeManager::new("knowledge");
