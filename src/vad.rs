@@ -43,9 +43,9 @@ impl VadDetector {
         }
     }
 
-    /// Default config: -45dB threshold (sensitive), 1 chunk min speech, 2 chunks min silence
+    /// Default config: -35dB threshold (balanced), 2 chunks min speech, 2 chunks min silence
     pub fn default_config() -> Self {
-        Self::new(-45.0, 1, 2)
+        Self::new(-35.0, 2, 2)
     }
 
     /// Process a chunk of audio samples. Returns a VadEvent.
@@ -143,7 +143,11 @@ mod tests {
         let mut vad = VadDetector::default_config();
         let loud = vec![0.3f32; 16000]; // loud signal
 
-        // First chunk: speech starts (min_speech_chunks=1)
+        // First chunk: not enough (min_speech_chunks=2)
+        let event = vad.process(&loud);
+        assert!(matches!(event, VadEvent::Silence));
+
+        // Second chunk: speech starts
         let event = vad.process(&loud);
         assert!(matches!(event, VadEvent::SpeechStart));
         assert!(vad.is_speaking());

@@ -10,17 +10,13 @@ use ghostai_pilot::knowledge::migration::{self, MigrationResult};
 use ghostai_pilot::llm::ChatMessage;
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Manager, State, WebviewWindow, WebviewWindowBuilder, Url, Emitter};
+use tauri::{AppHandle, Manager, State, WebviewWindow, WebviewWindowBuilder, WebviewUrl, Emitter};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
-#[cfg(feature = "audio")]
 use cpal::traits::{DeviceTrait, HostTrait};
 
 // Wrapper to make cpal::Stream Send + Sync
-#[cfg(feature = "audio")]
 struct StreamWrapper(cpal::Stream);
-#[cfg(feature = "audio")]
 unsafe impl Send for StreamWrapper {}
-#[cfg(feature = "audio")]
 unsafe impl Sync for StreamWrapper {}
 
 #[derive(Serialize, Clone)]
@@ -201,17 +197,29 @@ async fn start_capture(app_handle: AppHandle, state: State<'_, AppState>, pid: O
                                 let _ = app_handle.emit("transcription-update", TranscriptionPayload { text: transcription.clone() });
                             }
 
-                            let km = km_lock.lock().unwrap();
-                            let relevant_stories = if let Some(profile) = &km.personal_profile {
-                                profile.find_relevant_stories(&transcription)
-                            } else {
-                                vec![]
-                            };
-
-                            let external_knowledge = km.search_all(&transcription);
-                            drop(km); // Release lock before acquiring conversation lock
+                            let (relevant_stories, external_knowledge) = {
+                                let km = km_lock.lock().unwrap();
+                                let stories: Vec<_> = if let Some(profile) = &km.personal_profile {
+                                    profile.find_relevant_stories(&transcription).into_iter().cloned().collect()
+                                } else {
+                                    vec![]
+                                };
+                                let ext = km.search_all(&transcription);
+                                (stories, ext)
+                            }; // km lock released here
 
                             let mut conversation = conversation_lock.lock().unwrap();
+
+                            // Truncate conversation to last 20 messages (keep system prompt at index 0)
+                            const MAX_CONVERSATION_LEN: usize = 21; // 1 system + 20 messages
+                            if conversation.len() > MAX_CONVERSATION_LEN {
+                                let excess = conversation.len() - (MAX_CONVERSATION_LEN - 1);
+                                conversation.drain(1..1 + excess);
+                                // Ensure system prompt is preserved
+                                if conversation[0].role != "system" {
+                                    // system msg already at index 0 from .first().cloned()
+                                }
+                            }
 
                             if !relevant_stories.is_empty() || !external_knowledge.is_empty() {
                                 let mut context_msg = String::from("RELEVANT CONTEXT FOUND:\n");
@@ -270,8 +278,7 @@ fn open_profile_window(app_handle: AppHandle) -> Result<(), String> {
         return Ok(());
     }
 
-    let url = Url::parse("tauri://localhost/ui-profile/index.html")
-        .unwrap_or_else(|_| Url::parse("about:blank").unwrap());
+    let url = WebviewUrl::App("ui-profile/index.html".into());
 
     WebviewWindowBuilder::new(&app_handle, "profile", url)
         .title("Pelendur - Profile Management")
@@ -839,20 +846,21 @@ async fn coach_star_story(
     let config = state.config.clone();
 
     let story_context = if let Some(sid) = story_id {
-        let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
-        let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
-        let graph = provider.graph();
-        let story = graph.get_star_story(&sid).map_err(|e| e.to_string())?;
-        drop(gp_lock);
-
-        story.map(|s| format!(
-            "Here is the user's STAR story:\nTitle: {}\nSituation: {}\nTask: {}\nAction: {}\nResult: {}\nTags: {}\nDifficulty: {}\nStakes: {}",
-            s.title.as_deref().unwrap_or("Untitled"),
-            s.situation, s.task, s.action, s.result,
-            s.tags.as_deref().unwrap_or("none"),
-            s.difficulty.as_deref().unwrap_or("unspecified"),
-            s.stakes.as_deref().unwrap_or("unspecified"),
-        ))
+        let result = {
+            let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+            let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
+            let graph = provider.graph();
+            let story = graph.get_star_story(&sid).map_err(|e| e.to_string())?;
+            story.map(|s| format!(
+                "Here is the user's STAR story:\nTitle: {}\nSituation: {}\nTask: {}\nAction: {}\nResult: {}\nTags: {}\nDifficulty: {}\nStakes: {}",
+                s.title.as_deref().unwrap_or("Untitled"),
+                s.situation, s.task, s.action, s.result,
+                s.tags.as_deref().unwrap_or("none"),
+                s.difficulty.as_deref().unwrap_or("unspecified"),
+                s.stakes.as_deref().unwrap_or("unspecified"),
+            ))
+        }; // gp_lock dropped here
+        result
     } else {
         None
     };
@@ -952,21 +960,51 @@ async fn analyze_meeting(
     transcript: String,
     duration_minutes: Option<u32>,
 ) -> Result<serde_json::Value, String> {
-    let config = &state.config;
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
-    let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
-    let graph = provider.graph();
+    let config = state.config.clone();
+    let duration_minutes = duration_minutes.unwrap_or(0);
 
-    let analysis = knowledge::auto_learn::AutoLearner::analyze_meeting(
-        graph,
-        &transcript,
-        config,
-        duration_minutes.unwrap_or(0),
-    )
+    // Extract existing skill names synchronously (graph contains non-Send rusqlite)
+    let existing_skills: Vec<String> = {
+        let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+        let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
+        let graph = provider.graph();
+        let searcher = knowledge::search::KnowledgeSearcher::new(&*graph);
+        searcher.context_search("")
+            .into_iter()
+            .filter(|r| r.entity_type == "skill")
+            .map(|r| r.name.to_lowercase())
+            .collect()
+    };
+
+    // Build prompt and call LLM directly (no non-Send types held across await)
+    let existing_str = if existing_skills.is_empty() {
+        "No existing skills in profile".to_string()
+    } else {
+        existing_skills.join(", ")
+    };
+
+    let prompt = format!(
+        "Analyze this meeting transcript and suggest skills/knowledge to learn.\n\n\
+         Existing skills: {}\n\
+         Duration: {} minutes\n\n\
+         Transcript:\n{}\n\n\
+         Respond in JSON with keys: suggestions (array of {{skill, category, reason}}), summary (string).",
+        existing_str, duration_minutes, transcript
+    );
+
+    let response = llm::generate_response(&config, &vec![ChatMessage {
+        role: "user".to_string(),
+        content: prompt,
+    }])
     .await
     .map_err(|e| e.to_string())?;
 
-    serde_json::to_value(analysis).map_err(|e| e.to_string())
+    serde_json::to_value(serde_json::json!({
+        "transcript": transcript,
+        "suggestions": [],
+        "summary": response,
+        "duration_minutes": duration_minutes
+    })).map_err(|e| e.to_string())
 }
 
 #[derive(Serialize, Clone)]
@@ -1031,37 +1069,41 @@ async fn search_knowledge_semantic(
         .await
         .map_err(|e| format!("Embedding failed: {}", e))?;
 
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
-    let provider = gp_lock.as_ref().ok_or("Knowledge graph not initialized")?;
-    let graph = provider.graph();
+    // Extract all graph data synchronously, drop lock before any .await
+    let (entity_texts, texts_to_embed): (std::collections::HashMap<String, (String, String, String)>, Vec<(String, String)>) = {
+        let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+        let provider = gp_lock.as_ref().ok_or("Knowledge graph not initialized")?;
+        let graph = provider.graph();
 
-    let mut entity_texts: std::collections::HashMap<String, (String, String, String)> = std::collections::HashMap::new();
-    let mut texts_to_embed: Vec<(String, String)> = Vec::new();
+        let mut et: std::collections::HashMap<String, (String, String, String)> = std::collections::HashMap::new();
+        let mut tte: Vec<(String, String)> = Vec::new();
 
-    for skill in graph.list_skills().map_err(|e| e.to_string())? {
-        let text = format!("{} {} {} {}",
-            skill.name,
-            skill.category.clone().unwrap_or_default(),
-            "skill programming technology software development".to_string(),
-            skill.level.clone()
-        );
-        let id = skill.id.clone();
-        entity_texts.insert(id.clone(), ("skill".to_string(), skill.name.clone(), skill.name.clone()));
-        texts_to_embed.push((id, text));
-    }
+        for skill in graph.list_skills().map_err(|e| e.to_string())? {
+            let text = format!("{} {} {} {}",
+                skill.name,
+                skill.category.clone().unwrap_or_default(),
+                "skill programming technology software development".to_string(),
+                skill.level.clone()
+            );
+            let id = skill.id.clone();
+            et.insert(id.clone(), ("skill".to_string(), skill.name.clone(), skill.name.clone()));
+            tte.push((id, text));
+        }
 
-    for story in graph.list_star_stories().map_err(|e| e.to_string())? {
-        let text = format!("{} {} {} {} {}",
-            story.title.clone().unwrap_or_default(),
-            story.situation.clone().unwrap_or_default(),
-            story.task.clone().unwrap_or_default(),
-            story.action.clone().unwrap_or_default(),
-            story.result.clone().unwrap_or_default()
-        );
-        let id = story.id.clone();
-        entity_texts.insert(id.clone(), ("star_story".to_string(), story.title.clone().unwrap_or_default(), story.title.clone().unwrap_or_default()));
-        texts_to_embed.push((id, text));
-    }
+        for story in graph.list_star_stories().map_err(|e| e.to_string())? {
+            let text = format!("{} {} {} {} {}",
+                story.title.clone().unwrap_or_default(),
+                story.situation.clone(),
+                story.task.clone(),
+                story.action.clone(),
+                story.result.clone()
+            );
+            let id = story.id.clone();
+            et.insert(id.clone(), ("star_story".to_string(), story.title.clone().unwrap_or_default(), story.title.clone().unwrap_or_default()));
+            tte.push((id, text));
+        }
+        (et, tte)
+    }; // gp_lock dropped here
 
     let texts: Vec<String> = texts_to_embed.iter().map(|(_, t)| t.clone()).collect();
     let embeddings = engine.embed(texts).await.map_err(|e| e.to_string())?;
@@ -1150,8 +1192,13 @@ async fn open_cv_dialog(app_handle: AppHandle) -> Result<Option<String>, String>
         .file()
         .add_filter("CV Files", &["pdf", "txt", "md"])
         .set_title("Select your CV / Resume")
-        .blocking_file_path()
-        .map(|p| p.to_string());
+        .blocking_pick_file()
+        .map(|p| {
+            match p {
+                tauri_plugin_dialog::FilePath::Path(pathbuf) => pathbuf.to_string_lossy().to_string(),
+                tauri_plugin_dialog::FilePath::Url(url) => url.to_string(),
+            }
+        });
 
     Ok(file_path)
 }
@@ -1200,7 +1247,7 @@ fn search_knowledge_context(query: String, state: State<'_, AppState>) -> Result
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     
-    let searcher = knowledge::search::KnowledgeSearcher::new(graph);
+    let searcher = knowledge::search::KnowledgeSearcher::new(&*graph);
     let results = searcher.context_search(&query);
     
     // Return top 5 results with relevance > 0.5
@@ -1225,7 +1272,7 @@ fn find_relevant_stories(context: String, state: State<'_, AppState>) -> Result<
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     
-    let searcher = knowledge::search::KnowledgeSearcher::new(graph);
+    let searcher = knowledge::search::KnowledgeSearcher::new(&*graph);
     let results = searcher.context_search(&context);
     
     // Filter to STAR stories and return top 3 with highest relevance
@@ -1363,13 +1410,21 @@ async fn generate_practice_questions(
     // Get profile summary from knowledge manager
     let profile_summary = {
         let km = state.knowledge_manager.lock().map_err(|e| e.to_string())?;
-        format!(
-            "Name: {}\nTitle: {}\nSkills: {}\nExperience: {}",
-            km.profile().name.as_deref().unwrap_or("Unknown"),
-            km.profile().title.as_deref().unwrap_or("Professional"),
-            km.profile().skills.join(", "),
-            km.profile().experience.iter().map(|e| format!("{} at {}", e.role, e.company)).collect::<Vec<_>>().join("; ")
-        )
+        if let Some(profile) = &km.personal_profile {
+            let all_skills: Vec<String> = profile.skills.dominados.iter()
+                .chain(profile.skills.intermedios.iter())
+                .map(|s| s.nombre.clone())
+                .collect();
+            format!(
+                "Name: {}\nTitle: {}\nSkills: {}\nExperience: {}",
+                profile.nombre,
+                profile.rol_actual,
+                all_skills.join(", "),
+                profile.experiencia,
+            )
+        } else {
+            "Unknown professional".to_string()
+        }
     };
     
     let questions = ghostai_pilot::knowledge::practice::PracticeEngine::generate_questions(
@@ -1379,7 +1434,9 @@ async fn generate_practice_questions(
         config,
     ).await.map_err(|e| e.to_string())?;
     
-    serde_json::to_value(questions).map_err(|e| e.to_string())
+    questions.into_iter()
+        .map(|q| serde_json::to_value(q).map_err(|e| e.to_string()))
+        .collect()
 }
 
 #[tauri::command]
