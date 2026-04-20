@@ -49,3 +49,5 @@ knowledge/*.yml
 
 # Cargo.lock duplicates
 src-tauri/Cargo.lock
+target-pelendur/
+src-tauri/pelendur.db
