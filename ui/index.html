@@ -7,14 +7,28 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body data-tauri-drag-region>
-  <div id="hud-container" class="hud-container" data-tauri-drag-region>
+<div id="hud-container" class="hud-container" data-tauri-drag-region>
+    <!-- Minimal mode icon (visible when minimal) -->
+    <div id="minimal-icon" class="minimal-icon hidden" title="Click to expand HUD">
+      <span class="minimal-dot"></span>
+    </div>
+
     <button id="profile-btn" class="profile-btn icon-btn" title="Open Profile Management">Profile</button>
     <div class="controls" data-tauri-drag-region>
       <button id="audio-source-btn" class="icon-btn" title="Select Audio Source">🎧</button>
+      <button id="interview-btn" class="icon-btn interview-btn" title="Start Interview Mode">🎙️</button>
+      <button id="minimal-btn" class="icon-btn" title="Toggle Minimal Mode (compact icon)">🔘</button>
       <button id="lock-btn" class="icon-btn" title="Lock/Unlock Click-through (Ctrl+Alt+L)">🔓</button>
       <button id="clear-btn" class="icon-btn" title="Clear Feed">🗑️</button>
       <button id="regenerate-btn" class="icon-btn" title="Regenerate Last Suggestion">🔄</button>
       <div id="status-indicator" class="status-indicator">●</div>
+    </div>
+
+    <!-- Interview status bar (shown when interview is active) -->
+    <div id="interview-status-bar" class="interview-status-bar hidden">
+      <span class="interview-badge">🎙️ Interview Active</span>
+      <span id="interview-company-display" class="interview-company-display">—</span>
+      <span id="interview-timer" class="interview-timer">00:00</span>
     </div>
 
     <div id="knowledge-panel" class="knowledge-panel hidden">
@@ -33,6 +47,40 @@
           </div>
           <div class="section-content hidden" id="stories-content"></div>
         </div>
+      </div>
+    </div>
+
+    <!-- Company Selector Modal (for starting interview) -->
+    <div id="company-modal-overlay" class="modal-overlay hidden"></div>
+    <div id="company-modal" class="modal hidden">
+      <div class="modal-header">
+        <span>🎙️ Start Interview</span>
+        <button id="close-company-modal-btn" class="close-btn">&times;</button>
+      </div>
+      <div class="modal-body">
+        <label class="modal-label">Select Company:</label>
+        <div id="company-list" class="company-list">
+          <div class="loading-text">Loading companies...</div>
+        </div>
+        <div class="company-custom-row">
+          <label class="modal-label">Or type a custom company:</label>
+          <div class="company-input-row">
+            <input type="text" id="custom-company-input" class="company-input" placeholder="e.g., CrowdStrike, Google, ..." />
+            <button id="start-with-custom-btn" class="primary-btn">Start</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Modal (appears when interview ends) -->
+    <div id="summary-modal-overlay" class="modal-overlay hidden"></div>
+    <div id="summary-modal" class="modal modal-wide hidden">
+      <div class="modal-header">
+        <span>📋 Interview Summary</span>
+        <button id="close-summary-modal-btn" class="close-btn">&times;</button>
+      </div>
+      <div id="summary-content" class="modal-body summary-body">
+        <div class="loading-text">Generating summary...</div>
       </div>
     </div>
 

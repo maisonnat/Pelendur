@@ -87,8 +87,10 @@ fn main() {
             knowledge_manager,
             graph_provider: Arc::new(Mutex::new(graph_provider)),
             is_locked: Arc::new(Mutex::new(false)),
+            is_minimal: Arc::new(Mutex::new(false)),
             conversation: Arc::new(Mutex::new(Vec::new())),
             active_streams: Arc::new(Mutex::new(Vec::new())),
+            interview_session: Arc::new(Mutex::new(None)),
         })
         .setup(|app| {
             let _window = app.get_webview_window("main").unwrap();
@@ -120,6 +122,7 @@ fn main() {
             commands::audio::start_capture,
             // UI
             commands::ui::set_lock_state,
+            commands::ui::set_minimal_mode,
             commands::ui::clear_feed,
             commands::ui::regenerate,
             commands::ui::open_profile_window,
@@ -150,6 +153,19 @@ fn main() {
             commands::graph::remove_edge,
             commands::graph::list_edges_for_entity,
             commands::graph::get_graph_data,
+            // Interview Mode
+            commands::interview::start_interview,
+            commands::interview::end_interview,
+            commands::interview::get_interview_state,
+            commands::interview::list_companies,
+            // Company
+            commands::company::list_companies,
+            commands::company::create_company,
+            commands::company::update_company,
+            commands::company::delete_company,
+            commands::company::load_company_research,
+            commands::company::get_company_research_context,
+            commands::company::refresh_company_research,
             // CV
             commands::cv::parse_cv,
             commands::cv::confirm_cv_import,

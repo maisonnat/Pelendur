@@ -1,5 +1,6 @@
 use ghostai_pilot::{config, knowledge, llm};
-use serde::Serialize;
+use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
 /// Wrapper to make cpal::Stream Send-safe.
@@ -20,13 +21,22 @@ pub struct SuggestionPayload {
     pub text: String,
 }
 
+/// Tracks an active interview session
+pub struct InterviewSession {
+    pub company: String,
+    pub company_context: String,
+    pub started_at: chrono::DateTime<chrono::Utc>,
+}
+
 pub struct AppState {
     pub config: config::Config,
     pub knowledge_manager: Arc<Mutex<knowledge::personal::KnowledgeManager>>,
     pub graph_provider: Arc<Mutex<Option<ghostai_pilot::knowledge::graph::GraphKnowledgeProvider>>>,
     pub is_locked: Arc<Mutex<bool>>,
+    pub is_minimal: Arc<Mutex<bool>>,
     pub conversation: Arc<Mutex<Vec<llm::ChatMessage>>>,
     pub active_streams: Arc<Mutex<Vec<StreamWrapper>>>,
+    pub interview_session: Arc<Mutex<Option<InterviewSession>>>,
 }
 
 #[derive(Serialize, Clone)]

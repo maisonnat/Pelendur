@@ -1,5 +1,5 @@
 use crate::state::AppState;
-use tauri::{AppHandle, Emitter, Manager, State, WebviewWindow, WebviewWindowBuilder, WebviewUrl};
+use tauri::{AppHandle, Emitter, Manager, PhysicalPosition, PhysicalSize, State, WebviewWindow, WebviewWindowBuilder, WebviewUrl};
 
 #[tauri::command]
 pub fn set_lock_state(window: WebviewWindow, state: State<'_, AppState>, locked: bool) -> Result<(), String> {
@@ -7,6 +7,26 @@ pub fn set_lock_state(window: WebviewWindow, state: State<'_, AppState>, locked:
     *is_locked = locked;
     let _ = window.set_ignore_cursor_events(locked);
     let _ = window.emit("lock-state-changed", locked);
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_minimal_mode(window: WebviewWindow, state: State<'_, AppState>, minimal: bool) -> Result<(), String> {
+    let mut is_minimal = state.is_minimal.lock().map_err(|e| e.to_string())?;
+    *is_minimal = minimal;
+
+    if minimal {
+        // Shrink to a tiny floating icon in the bottom-right corner
+        window.set_size(PhysicalSize::new(64, 64)).map_err(|e| e.to_string())?;
+        // Position near bottom-right (adjust for taskbar)
+        window.set_position(PhysicalPosition::new(1840, 1000)).map_err(|e| e.to_string())?;
+    } else {
+        // Restore to full size at original position
+        window.set_size(PhysicalSize::new(800, 400)).map_err(|e| e.to_string())?;
+        window.set_position(PhysicalPosition::new(560, 50)).map_err(|e| e.to_string())?;
+    }
+
+    let _ = window.emit("minimal-mode-changed", minimal);
     Ok(())
 }
 
