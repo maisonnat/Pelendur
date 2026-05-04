@@ -106,31 +106,18 @@ fn resample_to_16k(samples: &[f32], source_rate: u32) -> Vec<f32> {
     output
 }
 
-fn select_capture_mode() -> Result<CaptureMode> {
-    println!("  How do you want to capture audio?");
-    println!();
-    println!("    [1] Single device (microphone or system audio)");
-    println!("    [2] Meeting Mode — Mic + System Audio");
-    println!();
-    print!("  Select [1-2]: ");
-    use std::io::Write;
-    std::io::stdout().flush().ok();
+    let input = input.trim().to_string();
 
-    let mut input = String::new();
-    std::io::stdin().read_line(&mut input).ok();
-    let input = input.trim();
+    let strategy = select_strategy_if_needed(&input)?;
 
     if input == "2" {
-        let strategy = audio_config::detect_strategy()?;
-
-        println!();
+        let strategy = strategy.unwrap();        println!();
         println!("  Step 1: Select your microphone");
         println!();
         let mic_device = audio::select_device_interactive()?;
 
         println!("  Step 2: Select system audio source");
-        println!();
-        let sources = strategy.list_sources();
+        println!("  {}", strategy.name());        let sources = strategy.list_sources();
         if sources.is_empty() {
             anyhow::bail!("No system audio sources found");
         }
@@ -159,7 +146,6 @@ fn select_capture_mode() -> Result<CaptureMode> {
         Ok(CaptureMode::Single(device))
     }
 }
-
 #[tokio::main]
 async fn main() -> Result<()> {
     // Initialize logging
