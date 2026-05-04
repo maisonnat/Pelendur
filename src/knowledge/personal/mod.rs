@@ -10,12 +10,36 @@ pub struct PersonalProfile {
     pub rol_actual: String,
     pub experiencia: String,
     pub ubicacion: Option<String>,
+    pub email: Option<String>,
+    pub linkedin: Option<String>,
+
+    pub idiomas: Vec<Idioma>,
+    pub educacion: Vec<Educacion>,
+    pub certificaciones: Vec<String>,
 
     pub skills: Skills,
     pub historias_star: Vec<StarStory>,
     pub logros: Vec<String>,
     pub debilidades_conocidas: Vec<DebilidadConocida>,
     pub preferencias: Preferencias,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Idioma {
+    pub idioma: String,
+    pub nivel: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Educacion {
+    pub titulo: String,
+    pub institucion: String,
+    #[serde(default)]
+    pub estado: Option<String>,
+    #[serde(default)]
+    pub periodo: Option<String>,
+    #[serde(default)]
+    pub expected: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -422,6 +446,34 @@ based on the candidate's actual experience and the company's context.
         prompt.push_str(&format!("Name: {}\n", profile.nombre));
         prompt.push_str(&format!("Current Role: {}\n", profile.rol_actual));
         prompt.push_str(&format!("Experience: {}\n", profile.experiencia));
+        if let Some(email) = &profile.email {
+            prompt.push_str(&format!("Email: {}\n", email));
+        }
+        if let Some(linkedin) = &profile.linkedin {
+            prompt.push_str(&format!("LinkedIn: {}\n", linkedin));
+        }
+
+        if !profile.idiomas.is_empty() {
+            prompt.push_str("\n### LANGUAGES:\n");
+            for lang in &profile.idiomas {
+                prompt.push_str(&format!("- {} ({})\n", lang.idioma, lang.nivel));
+            }
+        }
+
+        if !profile.educacion.is_empty() {
+            prompt.push_str("\n### EDUCATION:\n");
+            for edu in &profile.educacion {
+                if let Some(period) = &edu.periodo {
+                    prompt.push_str(&format!("- {} — {} ({})\n", edu.titulo, edu.institucion, period));
+                } else {
+                    prompt.push_str(&format!("- {} — {}\n", edu.titulo, edu.institucion));
+                }
+            }
+        }
+
+        if !profile.certificaciones.is_empty() {
+            prompt.push_str(&format!("\n### CERTIFICATIONS:\n- {}\n", profile.certificaciones.join("\n- ")));
+        }
 
         prompt.push_str("\n### TOP SKILLS:\n");
         for skill in profile.skills.dominados.iter().take(5) {
@@ -437,6 +489,25 @@ When you see a matching opportunity:
 3. "Caution: [Strategy for a weakness or common trap]"
 "#,
     );
+
+    prompt
+}
+
+/// Generates system prompt with company research context for interview mode
+pub fn generate_company_interview_prompt(
+    manager: &KnowledgeManager,
+    company_name: &str,
+) -> String {
+    let mut prompt = generate_system_prompt(manager);
+
+    // Inject company research context
+    if let Ok(context) = crate::knowledge::company::CompanyLoader::new(&manager.knowledge_base_path)
+        .get_interview_context(company_name)
+    {
+        prompt.push_str("\n\n### COMPANY RESEARCH CONTEXT:\n");
+        prompt.push_str(&context);
+        prompt.push_str("\n\nUse this company context to tailor your suggestions.\n");
+    }
 
     prompt
 }
@@ -459,6 +530,27 @@ nombre: "Test User"
 rol_actual: "Senior Backend Engineer"
 experiencia: "8 years"
 ubicacion: "Remote"
+email: "test@example.com"
+linkedin: "linkedin.com/in/testuser"
+
+idiomas:
+  - idioma: "English"
+    nivel: "Native"
+  - idioma: "Spanish"
+    nivel: "Professional"
+
+educacion:
+  - titulo: "BS Computer Science"
+    institucion: "Tech University"
+    periodo: "2010-2014"
+  - titulo: "MSc Data Science"
+    institucion: "Data Institute"
+    estado: "In progress"
+    expected: "December 2026"
+
+certificaciones:
+  - "AWS Certified Solutions Architect"
+  - "Certified Kubernetes Administrator"
 
 skills:
   dominados:
