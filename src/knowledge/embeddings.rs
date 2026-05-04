@@ -411,7 +411,7 @@ impl<'a> PersistentVectorStore<'a> {
         Ok(())
     }
 
-    fn generate_story_embeddings(&self, conn: &Connection) -> rusqlite::Result<()> {
+    pub fn generate_story_embeddings(&self, conn: &Connection) -> rusqlite::Result<()> {
         let mut stmt = conn.prepare("SELECT id, title, situation, task, action, result FROM star_stories")?;
         let rows = stmt.query_map([], |row| {
             Ok((
