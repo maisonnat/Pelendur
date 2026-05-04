@@ -139,6 +139,9 @@ fn main() {
             commands::knowledge::analyze_meeting,
             commands::knowledge::search_knowledge_context,
             commands::knowledge::find_relevant_stories,
+            commands::knowledge::match_star_stories,
+            commands::knowledge::match_star_stories_by_tags,
+            commands::knowledge::record_star_story_usage,
             // Graph CRUD
             commands::graph::list_skills,
             commands::graph::create_skill,

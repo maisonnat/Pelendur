@@ -9,6 +9,7 @@ pub mod personal;
 pub mod practice;
 pub mod search;
 pub mod skills;
+pub mod star_matcher;
 
 #[cfg(test)]
 mod tests {

@@ -208,3 +208,147 @@ pub fn find_relevant_stories(context: String, state: State<'_, AppState>) -> Res
     }).collect();
     Ok(enriched)
 }
+
+// ── STAR Matching ──────────────────────────────────────────────────────
+
+/// Match STAR stories against an interview question or transcript context.
+/// Uses a hybrid approach: hash-based embeddings + keyword search + graph edges.
+#[tauri::command]
+pub fn match_star_stories(
+    context: String,
+    state: State<'_, AppState>,
+    max_results: Option<usize>,
+    min_score: Option<f64>,
+) -> Result<Vec<StarMatchResult>, String> {
+    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
+    let graph = provider.graph();
+
+    let matcher = knowledge::star_matcher::StarMatcher::new(&graph);
+    let opts = knowledge::star_matcher::StarMatchOptions {
+        max_results: max_results.unwrap_or(5),
+        min_score: min_score.unwrap_or(0.15),
+        ..Default::default()
+    };
+
+    let matches = matcher
+        .match_stories(&context, Some(opts))
+        .map_err(|e| format!("STAR matching failed: {}", e))?;
+
+    Ok(matches
+        .into_iter()
+        .map(|m| StarMatchResult {
+            story: m.story.into(),
+            relevance_score: m.relevance_score,
+            embedding_similarity: m.embedding_similarity,
+            keyword_score: m.keyword_score,
+            edge_boost: m.edge_boost,
+            linked_skills: m
+                .linked_skills
+                .into_iter()
+                .map(|e| LinkedEntityInfo {
+                    id: e.id,
+                    name: e.name,
+                    relation: e.relation,
+                    weight: e.weight,
+                })
+                .collect(),
+            linked_projects: m
+                .linked_projects
+                .into_iter()
+                .map(|e| LinkedEntityInfo {
+                    id: e.id,
+                    name: e.name,
+                    relation: e.relation,
+                    weight: e.weight,
+                })
+                .collect(),
+            linked_companies: m
+                .linked_companies
+                .into_iter()
+                .map(|e| LinkedEntityInfo {
+                    id: e.id,
+                    name: e.name,
+                    relation: e.relation,
+                    weight: e.weight,
+                })
+                .collect(),
+            matched_terms: m.matched_terms,
+        })
+        .collect())
+}
+
+/// Match STAR stories by specific tags (skills, categories)
+#[tauri::command]
+pub fn match_star_stories_by_tags(
+    tags: Vec<String>,
+    state: State<'_, AppState>,
+) -> Result<Vec<StarMatchResult>, String> {
+    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
+    let graph = provider.graph();
+
+    let matcher = knowledge::star_matcher::StarMatcher::new(&graph);
+    let matches = matcher
+        .match_by_tags(&tags)
+        .map_err(|e| format!("STAR tag matching failed: {}", e))?;
+
+    Ok(matches
+        .into_iter()
+        .map(|m| StarMatchResult {
+            story: m.story.into(),
+            relevance_score: m.relevance_score,
+            embedding_similarity: m.embedding_similarity,
+            keyword_score: m.keyword_score,
+            edge_boost: m.edge_boost,
+            linked_skills: m
+                .linked_skills
+                .into_iter()
+                .map(|e| LinkedEntityInfo {
+                    id: e.id,
+                    name: e.name,
+                    relation: e.relation,
+                    weight: e.weight,
+                })
+                .collect(),
+            linked_projects: m
+                .linked_projects
+                .into_iter()
+                .map(|e| LinkedEntityInfo {
+                    id: e.id,
+                    name: e.name,
+                    relation: e.relation,
+                    weight: e.weight,
+                })
+                .collect(),
+            linked_companies: m
+                .linked_companies
+                .into_iter()
+                .map(|e| LinkedEntityInfo {
+                    id: e.id,
+                    name: e.name,
+                    relation: e.relation,
+                    weight: e.weight,
+                })
+                .collect(),
+            matched_terms: m.matched_terms,
+        })
+        .collect())
+}
+
+/// Record that a STAR story was used (increments usage_count)
+#[tauri::command]
+pub fn record_star_story_usage(
+    story_id: String,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
+    let graph = provider.graph();
+
+    let matcher = knowledge::star_matcher::StarMatcher::new(&graph);
+    matcher
+        .record_usage(&story_id)
+        .map_err(|e| format!("Failed to record usage: {}", e))?;
+    Ok(())
+}

@@ -277,6 +277,29 @@ pub struct CompanyInfo {
     pub overview: String,
 }
 
+// ─── STAR Matching ──────────────────────────────────────────────────────
+
+#[derive(Serialize, Clone)]
+pub struct StarMatchResult {
+    pub story: StarStoryRecord,
+    pub relevance_score: f64,
+    pub embedding_similarity: f64,
+    pub keyword_score: f64,
+    pub edge_boost: f64,
+    pub linked_skills: Vec<LinkedEntityInfo>,
+    pub linked_projects: Vec<LinkedEntityInfo>,
+    pub linked_companies: Vec<LinkedEntityInfo>,
+    pub matched_terms: Vec<String>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct LinkedEntityInfo {
+    pub id: String,
+    pub name: String,
+    pub relation: String,
+    pub weight: f64,
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 pub fn parse_entity_type(s: &str) -> Result<ghostai_pilot::knowledge::graph::EntityType, String> {
