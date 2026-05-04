@@ -37,6 +37,8 @@ pub async fn start_capture(
     let km_lock = state.knowledge_manager.clone();
     let conversation_lock = state.conversation.clone();
     let streams_lock = state.active_streams.clone();
+    let interview_session = state.interview_session.clone();
+    let memory = state.memory.clone();
 
     {
         let mut streams = streams_lock.lock().map_err(|e| e.to_string())?;
@@ -152,7 +154,25 @@ pub async fn start_capture(
                             if let Ok(response) = rt.block_on(llm::generate_response(&config, &conversation)) {
                                 println!("  🤖 IA: {}", response);
                                 emit_to_window(&app_handle, "suggestion-update", SuggestionPayload { text: response.clone() });
-                                conversation.push(ChatMessage { role: "assistant".to_string(), content: response });
+                                conversation.push(ChatMessage { role: "assistant".to_string(), content: response.clone() });
+
+                                // Store the turn to Engram if in interview mode
+                                if let Ok(session) = interview_session.lock() {
+                                    if let Some(interview) = session.as_ref() {
+                                        let eng_id = interview.engram_session_id.clone();
+                                        if !eng_id.is_empty() {
+                                            let m = memory.clone();
+                                            let q = transcription.clone();
+                                            let a = response.clone();
+                                            let company = interview.company.clone();
+                                            rt.spawn(async move {
+                                                if let Err(e) = m.store_turn(&eng_id, &company, &q, &a).await {
+                                                    eprintln!("  ⚠️ Engram store turn failed: {}", e);
+                                                }
+                                            });
+                                        }
+                                    }
+                                }
                             }
                         }
                     }

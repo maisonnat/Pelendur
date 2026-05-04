@@ -1,4 +1,4 @@
-use ghostai_pilot::{config, knowledge, llm};
+use ghostai_pilot::{config, knowledge, llm, memory};
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
 
@@ -20,6 +20,15 @@ pub struct SuggestionPayload {
     pub text: String,
 }
 
+/// Stores the active interview session metadata.
+pub struct InterviewSession {
+    pub company: String,
+    pub company_context: String,
+    pub engram_session_id: String,
+    pub started_at: chrono::DateTime<chrono::Utc>,
+    pub turn_count: usize,
+}
+
 pub struct AppState {
     pub config: config::Config,
     pub knowledge_manager: Arc<Mutex<knowledge::personal::KnowledgeManager>>,
@@ -27,6 +36,8 @@ pub struct AppState {
     pub is_locked: Arc<Mutex<bool>>,
     pub conversation: Arc<Mutex<Vec<llm::ChatMessage>>>,
     pub active_streams: Arc<Mutex<Vec<StreamWrapper>>>,
+    pub interview_session: Arc<Mutex<Option<InterviewSession>>>,
+    pub memory: memory::ConversationMemory,
 }
 
 #[derive(Serialize, Clone)]

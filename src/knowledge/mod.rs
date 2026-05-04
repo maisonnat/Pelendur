@@ -1,4 +1,5 @@
 pub mod auto_learn;
+pub mod company;
 pub mod cv_parser;
 pub mod embeddings;
 pub mod graph;

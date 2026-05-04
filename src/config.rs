@@ -28,6 +28,9 @@ pub struct Config {
     pub openai_model: String,
     pub openai_base_url: String,
 
+    // Engram (conversation memory)
+    pub engram_base_url: String,
+
     // Embeddings (uses OpenAI-compatible API)
     pub embedding_model: Option<String>,
 }
@@ -83,6 +86,8 @@ impl Config {
                 .unwrap_or_else(|_| "qwen3:4b-instruct".to_string()),
             openai_base_url: std::env::var("OPENAI_BASE_URL")
                 .unwrap_or_else(|_| "http://localhost:11434/v1".to_string()),
+            engram_base_url: std::env::var("ENGRAM_BASE_URL")
+                .unwrap_or_else(|_| "http://localhost:7437".to_string()),
             embedding_model: std::env::var("OPENAI_EMBEDDING_MODEL").ok(),
         })
     }

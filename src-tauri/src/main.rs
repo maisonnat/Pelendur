@@ -81,6 +81,11 @@ fn main() {
         }
     };
 
+    let memory = ghostai_pilot::memory::ConversationMemory::new(
+        config.engram_base_url.clone(),
+        Some("pelendur".into()),
+    );
+
     tauri::Builder::default()
         .manage(AppState {
             config,
@@ -89,6 +94,8 @@ fn main() {
             is_locked: Arc::new(Mutex::new(false)),
             conversation: Arc::new(Mutex::new(Vec::new())),
             active_streams: Arc::new(Mutex::new(Vec::new())),
+            interview_session: Arc::new(Mutex::new(None)),
+            memory,
         })
         .setup(|app| {
             let _window = app.get_webview_window("main").unwrap();

@@ -249,6 +249,34 @@ pub struct StoryResult {
     pub relevance: f64,
 }
 
+// ─── Interview Mode ─────────────────────────────────────────────────────
+
+#[derive(Serialize, Clone)]
+pub struct InterviewSessionState {
+    pub active: bool,
+    pub company: Option<String>,
+    pub started_at: Option<String>,
+    pub duration_seconds: Option<u64>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct InterviewSummary {
+    pub company: String,
+    pub duration_seconds: u64,
+    pub transcript_count: usize,
+    pub summary_text: String,
+    pub strengths: Vec<String>,
+    pub areas_to_improve: Vec<String>,
+    pub recommended_stories: Vec<String>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct CompanyInfo {
+    pub name: String,
+    pub industry: Option<String>,
+    pub overview: String,
+}
+
 // ─── Helpers ────────────────────────────────────────────────────────────
 
 pub fn parse_entity_type(s: &str) -> Result<ghostai_pilot::knowledge::graph::EntityType, String> {
