@@ -105,13 +105,20 @@ fn resample_to_16k(samples: &[f32], source_rate: u32) -> Vec<f32> {
     output
 }
 
-fn select_capture_mode() -> Result<CaptureMode> {
-    let strategy = audio_config::detect_strategy()?;
+fn select_strategy_if_needed(input: &str) -> Result<Option<Box<dyn AudioStrategy>>> {
+    if input == "2" {
+        let strategy = audio_config::detect_strategy()?;
+        Ok(Some(strategy))
+    } else {
+        Ok(None)
+    }
+}
 
+fn select_capture_mode() -> Result<CaptureMode> {
     println!("  How do you want to capture audio?");
     println!();
     println!("    [1] Single device (microphone or system audio)");
-    println!("    [2] Meeting Mode — Mic + System Audio ({})", strategy.name());
+    println!("    [2] Meeting Mode — Mic + System Audio");
     println!();
     print!("  Select [1-2]: ");
     use std::io::Write;
@@ -119,16 +126,19 @@ fn select_capture_mode() -> Result<CaptureMode> {
 
     let mut input = String::new();
     std::io::stdin().read_line(&mut input).ok();
-    let input = input.trim();
+    let input = input.trim().to_string();
+
+    let strategy = select_strategy_if_needed(&input)?;
 
     if input == "2" {
+        let strategy = strategy.unwrap();
         println!();
         println!("  Step 1: Select your microphone");
         println!();
         let mic_device = audio::select_device_interactive()?;
 
         println!("  Step 2: Select system audio source");
-        println!();
+        println!("  {}", strategy.name());
         let sources = strategy.list_sources();
         if sources.is_empty() {
             anyhow::bail!("No system audio sources found");

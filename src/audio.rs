@@ -101,6 +101,9 @@ pub mod real {
 
     pub fn select_device_interactive() -> Result<Device> {
         let devices = enumerate_input_devices()?;
+        if devices.is_empty() {
+            anyhow::bail!("No audio input devices found. Check your microphone connection.");
+        }
         for (i, (name, _, is_default, label)) in devices.iter().enumerate() {
             let marker = if *is_default { " ← default" } else { "" };
             println!("    [{}] {} {}{}", i + 1, label, name, marker);
