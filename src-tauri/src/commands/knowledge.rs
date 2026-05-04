@@ -3,7 +3,6 @@ use crate::types::*;
 use ghostai_pilot::knowledge;
 use ghostai_pilot::llm::{self, ChatMessage};
 use tauri::State;
-use std::sync::{Arc, Mutex};
 
 #[tauri::command]
 pub fn get_knowledge_graph_stats(state: State<'_, AppState>) -> Result<KnowledgeGraphStats, String> {
