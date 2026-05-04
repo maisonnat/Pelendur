@@ -1,6 +1,7 @@
 mod audio;
 mod audio_config;
 mod config;
+mod conversation_memory;
 mod knowledge;
 mod llm;
 mod loopback;
@@ -106,12 +107,10 @@ fn resample_to_16k(samples: &[f32], source_rate: u32) -> Vec<f32> {
 }
 
 fn select_capture_mode() -> Result<CaptureMode> {
-    let strategy = audio_config::detect_strategy()?;
-
     println!("  How do you want to capture audio?");
     println!();
     println!("    [1] Single device (microphone or system audio)");
-    println!("    [2] Meeting Mode — Mic + System Audio ({})", strategy.name());
+    println!("    [2] Meeting Mode — Mic + System Audio");
     println!();
     print!("  Select [1-2]: ");
     use std::io::Write;
@@ -122,6 +121,8 @@ fn select_capture_mode() -> Result<CaptureMode> {
     let input = input.trim();
 
     if input == "2" {
+        let strategy = audio_config::detect_strategy()?;
+
         println!();
         println!("  Step 1: Select your microphone");
         println!();
@@ -210,6 +211,19 @@ async fn main() -> Result<()> {
     }
 
     let system_prompt = knowledge::personal::generate_system_prompt(&knowledge_manager);
+
+    // Initialize Conversation Memory (Engram-backed cross-session memory)
+    let mut memory = conversation_memory::ConversationMemory::new(
+        &config.engram_base_url,
+        "pelendur",
+        5, // max 5 past memories into context
+    );
+    let session_title = format!("Interview Session {}", Local::now().format("%Y-%m-%d %H:%M"));
+    if let Err(e) = memory.start_session(&session_title).await {
+        warn!("Failed to start Engram memory session: {} — memory disabled", e);
+    } else {
+        info!("Engram memory session active");
+    }
 
     // Show STT provider
     let stt_label = match config.stt_provider {
@@ -339,7 +353,6 @@ async fn main() -> Result<()> {
                 println!("\n  Stopping Pelendur...");
                 println!("  Saving interview session to knowledge base...");
                 
-                let session_title = format!("Interview Session {}", Local::now().format("%Y-%m-%d %H:%M"));
                 let mut session_content = String::from("# Interview Session Summary\n\n");
                 for msg in &conversation {
                     if msg.role != "system" {
@@ -348,6 +361,17 @@ async fn main() -> Result<()> {
                 }
                 
                 knowledge_manager.save_to_all(&session_title, &session_content);
+
+                // Save session summary to Engram
+                let summary = format!("Interview session of {} with {} turns.", 
+                    Local::now().format("%Y-%m-%d %H:%M"),
+                    conversation.iter().filter(|m| m.role == "user").count());
+                if let Err(e) = memory.end_session(&summary).await {
+                    debug!("Failed to save session summary to Engram: {}", e);
+                } else {
+                    println!("  ✓ Session saved to Engram memory.");
+                }
+
                 println!("  ✓ Session saved. Goodbye!");
                 break;
             }
@@ -466,6 +490,9 @@ async fn main() -> Result<()> {
 
                             let external_knowledge = knowledge_manager.search_all(&transcription);
 
+                            // Build combined context from knowledge + Engram memory
+                            let mut context_messages: Vec<ChatMessage> = Vec::new();
+
                             if !relevant_stories.is_empty() || !external_knowledge.is_empty() {
                                 let mut context_msg = String::from("RELEVANT CONTEXT FOUND:\n");
                                 for story in relevant_stories {
@@ -475,11 +502,24 @@ async fn main() -> Result<()> {
                                 for ext in external_knowledge {
                                     context_msg.push_str(&format!("- EXTERNAL: {}\n", ext));
                                 }
-                                
-                                conversation.push(ChatMessage {
+                                context_messages.push(ChatMessage {
                                     role: "system".to_string(),
                                     content: context_msg,
                                 });
+                            }
+
+                            // Load cross-session memory from Engram
+                            if let Ok(Some(memory_context)) = memory.build_memory_context(&transcription).await {
+                                context_messages.push(ChatMessage {
+                                    role: "system".to_string(),
+                                    content: memory_context,
+                                });
+                                info!("Injected cross-session memory context for: {}", &transcription[..transcription.len().min(60)]);
+                            }
+
+                            // Push all context messages, then the user message
+                            for ctx_msg in context_messages {
+                                conversation.push(ctx_msg);
                             }
 
                             conversation.push(ChatMessage {
@@ -501,8 +541,12 @@ async fn main() -> Result<()> {
                                     println!("{}", response);
                                     conversation.push(ChatMessage {
                                         role: "assistant".to_string(),
-                                        content: response,
+                                        content: response.clone(),
                                     });
+                                    // Save Q&A turn to Engram (best-effort)
+                                    if let Err(e) = memory.save_turn(&transcription, &response).await {
+                                        debug!("Failed to save conversation turn to Engram: {}", e);
+                                    }
                                 }
                                 Err(e) => {
                                     error!("LLM failed: {}", e);

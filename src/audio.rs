@@ -101,6 +101,9 @@ pub mod real {
 
     pub fn select_device_interactive() -> Result<Device> {
         let devices = enumerate_input_devices()?;
+        if devices.is_empty() {
+            return Err(anyhow!("No audio input devices found"));
+        }
         for (i, (name, _, is_default, label)) in devices.iter().enumerate() {
             let marker = if *is_default { " ← default" } else { "" };
             println!("    [{}] {} {}{}", i + 1, label, name, marker);
@@ -111,7 +114,8 @@ pub mod real {
         let mut input = String::new();
         std::io::stdin().read_line(&mut input).ok();
         let idx: usize = input.trim().parse().unwrap_or(1);
-        Ok(devices.get(idx - 1).map(|d| d.1.clone()).unwrap_or(devices[0].1.clone()))
+        let idx = idx.max(1).min(devices.len());
+        Ok(devices[idx - 1].1.clone())
     }
 
     pub fn start_capture(device: Device) -> Result<(mpsc::Receiver<AudioChunk>, cpal::Stream)> {
