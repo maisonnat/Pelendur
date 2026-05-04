@@ -2,7 +2,6 @@ use crate::state::{AppState, InterviewSession, SuggestionPayload, TranscriptionP
 use crate::types::{CompanyInfo, InterviewSessionState, InterviewSummary};
 use ghostai_pilot::knowledge;
 use ghostai_pilot::llm::{self, ChatMessage};
-use ghostai_pilot::memory::ConversationMemory;
 use std::fs;
 use std::io::Write;
 use std::path::Path;
@@ -10,7 +9,12 @@ use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Emitter, Manager, State};
 
 /// Load company research from knowledge/companies/<name>/overview.md
-fn load_company_research(knowledge_base_path: &str, company_name: &str) -> Option<CompanyInfo> {
+/// If no research exists and auto_research is true, triggers NotebookLM research.
+fn load_company_research(
+    knowledge_base_path: &str,
+    company_name: &str,
+    auto_research: bool,
+) -> Option<CompanyInfo> {
     let slug = company_name.to_lowercase().replace(' ', "-").replace('/', "-");
     let overview_path = Path::new(knowledge_base_path)
         .join("companies")
@@ -18,10 +22,21 @@ fn load_company_research(knowledge_base_path: &str, company_name: &str) -> Optio
         .join("overview.md");
 
     if !overview_path.exists() {
+        if auto_research {
+            // Auto-research will be triggered asynchronously from the caller
+            return None;
+        }
         return None;
     }
 
     let content = fs::read_to_string(overview_path).ok()?;
+    // Skip TEMPLATE stubs
+    if content.contains("{{COMPANY_NAME}}") || content.trim().len() < 100 {
+        if auto_research {
+            return None;
+        }
+    }
+
     let lines: Vec<&str> = content.lines().collect();
     let industry = lines
         .iter()
@@ -81,26 +96,29 @@ pub fn start_interview(
         }
     }
 
-    // Create Engram session for this interview
-    let engram_session_id = match state.memory.create_session().await {
-        Ok(id) => id,
-        Err(e) => {
+    // Start Engram session for this interview
+    {
+        let mut mem = state.memory.lock().map_err(|e| e.to_string())?;
+        if let Err(e) = mem.start_session(&company_name).await {
             eprintln!("  ⚠️ Engram session creation failed (non-fatal): {}", e);
-            String::new()
         }
-    };
+    }
 
     // Load past interview context from Engram for this company
-    let past_context = match state.memory.load_past_context(&company_name, 10).await {
-        Ok(ctx) => ctx,
-        Err(e) => {
-            eprintln!("  ⚠️ Engram context load failed (non-fatal): {}", e);
-            String::new()
+    let past_context = {
+        let mem = state.memory.lock().map_err(|e| e.to_string())?;
+        match mem.build_memory_context(&company_name).await {
+            Ok(Some(ctx)) => ctx,
+            Ok(None) => String::new(),
+            Err(e) => {
+                eprintln!("  ⚠️ Engram context load failed (non-fatal): {}", e);
+                String::new()
+            }
         }
     };
 
     // Load company research
-    let company_info = load_company_research("knowledge", &company_name);
+    let company_info = load_company_research("knowledge", &company_name, false);
     let company_context = build_company_context_string(&company_name, "knowledge");
 
     // Set interview session with Engram session_id
@@ -112,7 +130,6 @@ pub fn start_interview(
         *session = Some(InterviewSession {
             company: company_name.clone(),
             company_context: company_context.clone(),
-            engram_session_id: engram_session_id.clone(),
             started_at: chrono::Utc::now(),
             turn_count: 0,
         });
@@ -162,7 +179,6 @@ pub async fn end_interview(
     let company_name;
     let started_at;
     let company_context;
-    let engram_session_id;
 
     // Extract and clear session
     {
@@ -174,7 +190,6 @@ pub async fn end_interview(
         company_name = s.company;
         started_at = s.started_at;
         company_context = s.company_context;
-        engram_session_id = s.engram_session_id;
     }
 
     let duration = (chrono::Utc::now() - started_at).num_seconds() as u64;
@@ -296,15 +311,11 @@ Brief 2-3 sentence overview of how the interview went.
     );
 
     // End Engram session with summary
-    if !engram_session_id.is_empty() {
-        let mem = state.memory.clone();
-        let summary_clone = summary_text.clone();
-        let eng_id = engram_session_id.clone();
-        tokio::spawn(async move {
-            if let Err(e) = mem.end_session(&eng_id, &summary_clone).await {
-                eprintln!("  ⚠️ Engram end session failed: {}", e);
-            }
-        });
+    {
+        let mem = state.memory.lock().map_err(|e| e.to_string())?;
+        if let Err(e) = mem.end_session(&summary_text).await {
+            eprintln!("  ⚠️ Engram end session failed: {}", e);
+        }
     }
 
     // Emit state change to frontend

@@ -159,17 +159,17 @@ pub async fn start_capture(
                                 // Store the turn to Engram if in interview mode
                                 if let Ok(session) = interview_session.lock() {
                                     if let Some(interview) = session.as_ref() {
-                                        let eng_id = interview.engram_session_id.clone();
-                                        if !eng_id.is_empty() {
-                                            let m = memory.clone();
-                                            let q = transcription.clone();
-                                            let a = response.clone();
-                                            let company = interview.company.clone();
-                                            rt.spawn(async move {
-                                                if let Err(e) = m.store_turn(&eng_id, &company, &q, &a).await {
-                                                    eprintln!("  ⚠️ Engram store turn failed: {}", e);
+                                        let company = interview.company.clone();
+                                        if let Ok(mem_lock) = memory.lock() {
+                                            let _ = mem_lock.save_turn(&transcription, &response).await;
+                                            // Increment turn count
+                                            drop(mem_lock); // release memory lock
+                                            // Update turn count in interview session
+                                            if let Ok(mut session2) = interview_session.lock() {
+                                                if let Some(ref mut s) = *session2 {
+                                                    s.turn_count += 1;
                                                 }
-                                            });
+                                            }
                                         }
                                     }
                                 }

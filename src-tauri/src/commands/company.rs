@@ -129,3 +129,74 @@ pub fn refresh_company_research(state: State<'_, AppState>) -> Result<Vec<Compan
 
     Ok(entities.into_iter().map(CompanyRecord::from).collect())
 }
+
+// ─── Research Company via NotebookLM ────────────────────────────────────
+
+/// IPC type for research status.
+#[derive(serde::Serialize, Clone)]
+pub struct ResearchStatusIpc {
+    pub company_name: String,
+    pub overview_path: String,
+    pub has_notebooklm: bool,
+    pub research_done: bool,
+    pub message: String,
+}
+
+/// Trigger deep research for a company using NotebookLM + LLM extraction.
+/// Returns immediately with initial status; actual research runs in background.
+#[tauri::command]
+pub async fn research_company(
+    state: State<'_, AppState>,
+    company_name: String,
+) -> Result<ResearchStatusIpc, String> {
+    // Get graph provider
+    let graph = {
+        let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+        gp_lock.as_ref().map(|gp| gp.graph())
+    };
+
+    // Create researcher and run
+    let researcher = knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
+    let status = researcher.research_company(&company_name, graph.as_ref())
+        .await
+        .map_err(|e| format!("Company research failed: {}", e))?;
+
+    Ok(ResearchStatusIpc {
+        company_name: status.company_name,
+        overview_path: status.overview_path.to_string_lossy().to_string(),
+        has_notebooklm: status.has_notebooklm,
+        research_done: status.research_done,
+        message: status.message,
+    })
+}
+
+/// List companies that need research (stubs with no real data).
+#[tauri::command]
+pub async fn list_unresearched_companies(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    let researcher = knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
+    researcher.list_unresearched_companies()
+        .await
+        .map_err(|e| format!("Failed to list unresearched companies: {}", e))
+}
+
+/// Research all companies that don't have real research data yet.
+#[tauri::command]
+pub async fn research_all_companies(state: State<'_, AppState>) -> Result<Vec<ResearchStatusIpc>, String> {
+    let graph = {
+        let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+        gp_lock.as_ref().map(|gp| gp.graph())
+    };
+
+    let researcher = knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
+    let results = researcher.research_all_missing(graph.as_ref())
+        .await
+        .map_err(|e| format!("Batch research failed: {}", e))?;
+
+    Ok(results.into_iter().map(|s| ResearchStatusIpc {
+        company_name: s.company_name,
+        overview_path: s.overview_path.to_string_lossy().to_string(),
+        has_notebooklm: s.has_notebooklm,
+        research_done: s.research_done,
+        message: s.message,
+    }).collect())
+}

@@ -81,10 +81,13 @@ fn main() {
         }
     };
 
-    let memory = ghostai_pilot::memory::ConversationMemory::new(
-        config.engram_base_url.clone(),
-        Some("pelendur".into()),
-    );
+    let memory = Arc::new(Mutex::new(
+        ghostai_pilot::conversation_memory::ConversationMemory::new(
+            config.engram_base_url.clone(),
+            "pelendur",
+            20,
+        )
+    ));
 
     tauri::Builder::default()
         .manage(AppState {
@@ -182,6 +185,10 @@ fn main() {
             // Practice
             commands::practice::generate_practice_questions,
             commands::practice::analyze_practice_answer,
+            // Company research
+            commands::company::research_company,
+            commands::company::list_unresearched_companies,
+            commands::company::research_all_companies,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

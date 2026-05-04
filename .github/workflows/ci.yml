@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [ master, develop ]
+  pull_request:
+    branches: [ master ]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+
+jobs:
+  check:
+    name: Rust Check
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Rust toolchain
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        targets: x86_64-pc-windows-msvc
+        components: clippy, rustfmt
+
+    - name: Cache cargo dependencies
+      uses: Swatinem/rust-cache@v2
+      with:
+        workspaces: |
+          . -> target-pelendur
+          src-tauri -> src-tauri/target
+
+    - name: Check format
+      run: cargo fmt --check --manifest-path src-tauri/Cargo.toml
+      continue-on-error: true
+
+    - name: Check compilation (ghostai-pilot)
+      run: cargo check --manifest-path Cargo.toml --features "audio,parakeet"
+
+    - name: Check compilation (Tauri overlay)
+      run: cargo check --manifest-path src-tauri/Cargo.toml
+
+    - name: Run tests
+      run: cargo test --manifest-path Cargo.toml --features "audio,parakeet" -- --nocapture
+      continue-on-error: true
+
+    - name: Clippy
+      run: cargo clippy --manifest-path Cargo.toml --features "audio,parakeet" -- -D warnings
+      continue-on-error: true

@@ -43,11 +43,29 @@ engram-chunks/
 node_modules/
 ui-profile/dist/
 
-# User knowledge data (personal YAML/JSON)
+# User knowledge data (personal YAML/JSON/MD)
 knowledge/*.yaml
 knowledge/*.yml
+knowledge/interviews/*.md
 
 # Cargo.lock duplicates
 src-tauri/Cargo.lock
 target-pelendur/
 src-tauri/pelendur.db
+
+# SQLite databases
+pelendur.db
+pelendur.db-shm
+pelendur.db-wal
+
+# Debug logs
+wasapi-debug.log
+
+# Kanban worktrees
+.worktrees/
+
+# Built UI assets
+ui/ui-profile/
+
+# Generated schemas
+src-tauri/gen/schemas/linux-schema.json
