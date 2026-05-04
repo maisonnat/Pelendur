@@ -170,6 +170,67 @@ button:hover {
   background: #333;
 }
 
+/* Minimal mode toggle button - active state */
+#minimal-btn.active {
+  background: rgba(255, 215, 0, 0.2);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
+}
+
+/* Minimal mode icon overlay */
+#minimal-icon {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 200;
+  background: transparent;
+  transition: opacity 0.2s ease;
+}
+
+#minimal-icon.hidden {
+  display: none;
+}
+
+.minimal-dot {
+  display: block;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--accent-color);
+  box-shadow: 0 0 12px rgba(255, 215, 0, 0.7), 0 0 24px rgba(255, 215, 0, 0.3);
+  animation: minimalPulse 2s ease-in-out infinite;
+  transition: transform 0.15s ease;
+}
+
+#minimal-icon:hover .minimal-dot {
+  transform: scale(1.3);
+}
+
+@keyframes minimalPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(255, 215, 0, 0.7), 0 0 24px rgba(255, 215, 0, 0.3); }
+  50% { box-shadow: 0 0 18px rgba(255, 215, 0, 1), 0 0 36px rgba(255, 215, 0, 0.5); }
+}
+
+/* Hide all HUD content when in minimal mode */
+.hud-container.minimal #profile-btn,
+.hud-container.minimal .controls,
+.hud-container.minimal .main-content,
+.hud-container.minimal .knowledge-panel,
+.hud-container.minimal #modal-overlay,
+.hud-container.minimal #process-modal {
+  display: none !important;
+}
+
+.hud-container.minimal #minimal-icon {
+  display: flex;
+}
+
 .status-bar {
   position: absolute;
   top: 5px;
@@ -214,6 +275,274 @@ button:hover {
 .process-item:hover { background: #333; }
 .process-header {
   padding: 10px; background: #111; font-size: 0.8rem; color: #888;
+}
+
+/* ─── Interview Mode ─────────────────────────────────────────────────── */
+
+.interview-btn.active {
+  border-color: #ff4444;
+  background: rgba(255, 68, 68, 0.2);
+  color: #ff4444;
+}
+
+.interview-status-bar {
+  position: absolute;
+  top: 10px;
+  right: 100px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(255, 68, 68, 0.15);
+  border: 1px solid rgba(255, 68, 68, 0.4);
+  border-radius: 12px;
+  font-size: 11px;
+  z-index: 40;
+  animation: fadeIn 0.3s ease-out;
+}
+
+.interview-status-bar.hidden {
+  display: none;
+}
+
+.interview-badge {
+  color: #ff4444;
+  font-weight: 600;
+}
+
+.interview-company-display {
+  color: var(--accent-color, #ffd700);
+  font-weight: 500;
+}
+
+.interview-timer {
+  color: rgba(255, 255, 255, 0.6);
+  font-family: 'Consolas', 'Monaco', monospace;
+  font-size: 12px;
+}
+
+/* Company selector modal */
+#company-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #222;
+  padding: 20px;
+  border-radius: 12px;
+  z-index: 101;
+  width: 80%;
+  max-width: 500px;
+  max-height: 80%;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  backdrop-filter: blur(10px);
+}
+
+#company-modal .modal-body {
+  margin-top: 12px;
+}
+
+.modal-label {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.company-list {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.company-item {
+  padding: 10px 14px;
+  border-bottom: 1px solid #333;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  transition: background 0.15s;
+}
+
+.company-item:last-child {
+  border-bottom: none;
+}
+
+.company-item:hover {
+  background: rgba(255, 215, 0, 0.1);
+}
+
+.company-name {
+  font-weight: 500;
+  color: #fff;
+}
+
+.company-industry {
+  font-size: 11px;
+  color: rgba(255, 215, 0, 0.6);
+}
+
+.company-empty,
+.company-error,
+.loading-text {
+  padding: 16px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 13px;
+}
+
+.company-error {
+  color: #ff4444;
+}
+
+.company-custom-row {
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 12px;
+}
+
+.company-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.company-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+}
+
+.company-input:focus {
+  border-color: var(--accent-color, #ffd700);
+}
+
+.company-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.primary-btn {
+  background: var(--accent-color, #ffd700);
+  color: #111;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.primary-btn:hover {
+  background: #ffed4a;
+}
+
+/* Summary modal */
+.modal-wide {
+  max-width: 700px !important;
+}
+
+#summary-modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: #1a1a2e;
+  padding: 24px;
+  border-radius: 16px;
+  z-index: 101;
+  width: 80%;
+  max-width: 700px;
+  max-height: 80%;
+  overflow-y: auto;
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.summary-body {
+  color: #e0e0e0;
+  line-height: 1.6;
+}
+
+.summary-header {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+}
+
+.summary-meta {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.summary-company {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-color, #ffd700);
+}
+
+.summary-duration,
+.summary-questions {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+.summary-section {
+  margin-bottom: 20px;
+}
+
+.summary-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent-color, #ffd700);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.summary-text {
+  font-size: 14px;
+  color: #ccc;
+}
+
+.summary-list {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.summary-list li {
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #ccc;
+}
+
+/* Make modal overlays reusable */
+#company-modal-overlay,
+#summary-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  z-index: 100;
 }
 
 #knowledge-context-bar {

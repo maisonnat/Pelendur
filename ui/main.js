@@ -1,5 +1,4 @@
 // Pelendur HUD UI Logic
-// Use a safe wrapper to wait for Tauri
 document.addEventListener('DOMContentLoaded', () => {
   const { invoke } = window.__TAURI__.core;
   const { listen } = window.__TAURI__.event;
@@ -8,16 +7,34 @@ document.addEventListener('DOMContentLoaded', () => {
   const transcriptionFeed = document.getElementById('transcription-feed');
   const partialDiv = document.getElementById('partial-transcription');
   const audioSourceBtn = document.getElementById('audio-source-btn');
+  const interviewBtn = document.getElementById('interview-btn');
   const lockBtn = document.getElementById('lock-btn');
   const clearBtn = document.getElementById('clear-btn');
   const regenerateBtn = document.getElementById('regenerate-btn');
   const statusIndicator = document.getElementById('status-indicator');
   const profileBtn = document.getElementById('profile-btn');
+  const minimalBtn = document.getElementById('minimal-btn');
+  const minimalIcon = document.getElementById('minimal-icon');
 
   const processModal = document.getElementById('process-modal');
   const processList = document.getElementById('process-list');
   const closeModalBtn = document.getElementById('close-modal-btn');
   const modalOverlay = document.getElementById('modal-overlay');
+
+  // Interview elements
+  const interviewStatusBar = document.getElementById('interview-status-bar');
+  const interviewCompanyDisplay = document.getElementById('interview-company-display');
+  const interviewTimer = document.getElementById('interview-timer');
+  const companyModal = document.getElementById('company-modal');
+  const companyModalOverlay = document.getElementById('company-modal-overlay');
+  const companyList = document.getElementById('company-list');
+  const customCompanyInput = document.getElementById('custom-company-input');
+  const startWithCustomBtn = document.getElementById('start-with-custom-btn');
+  const closeCompanyModalBtn = document.getElementById('close-company-modal-btn');
+  const summaryModal = document.getElementById('summary-modal');
+  const summaryModalOverlay = document.getElementById('summary-modal-overlay');
+  const summaryContent = document.getElementById('summary-content');
+  const closeSummaryModalBtn = document.getElementById('close-summary-modal-btn');
 
   const state = {
     knowledgeContext: [],
@@ -25,6 +42,9 @@ document.addEventListener('DOMContentLoaded', () => {
     conversationHistory: [],
     knowledgeCache: new Map(),
     knowledgeCacheTime: new Map(),
+    interviewActive: false,
+    interviewStartTime: null,
+    interviewTickInterval: null,
   };
 
   let isLocked = false;
@@ -35,6 +55,16 @@ document.addEventListener('DOMContentLoaded', () => {
   async function init() {
     console.log('--- Pelendur HUD Initializing ---');
     mainSuggestion.textContent = "Esperando audio... Seleccioná el dispositivo.";
+
+    // Check if interview was already active (app restart)
+    try {
+      const interviewState = await invoke('get_interview_state');
+      if (interviewState.active) {
+        startInterviewUI(interviewState.company, interviewState.started_at);
+      }
+    } catch (e) {
+      console.log('Could not check interview state:', e);
+    }
 
     // Listen for knowledge graph context updates
     await listen('knowledge-context', (event) => {
@@ -101,7 +131,217 @@ document.addEventListener('DOMContentLoaded', () => {
       lockBtn.textContent = isLocked ? '🔒' : '🔓';
       document.body.classList.toggle('locked', isLocked);
     });
+
+    // Listen for minimal mode changes from Rust
+    await listen('minimal-mode-changed', (event) => {
+      const hudContainer = document.getElementById('hud-container');
+      const isMinimal = event.payload;
+      hudContainer.classList.toggle('minimal', isMinimal);
+      minimalBtn.classList.toggle('active', isMinimal);
+    });
+
+    // Listen for interview state changes
+    await listen('interview-state-changed', (event) => {
+      const data = event.payload;
+      if (data.active) {
+        startInterviewUI(data.company, data.started_at);
+      } else {
+        endInterviewUI();
+      }
+    });
+
+    // Listen for interview summary
+    await listen('interview-summary', (event) => {
+      showSummaryModal(event.payload);
+    });
   }
+
+  // ─── Interview Mode ────────────────────────────────────────────────────
+
+  function startInterviewUI(company, startedAt) {
+    state.interviewActive = true;
+    state.interviewStartTime = startedAt ? new Date(startedAt) : new Date();
+    interviewBtn.textContent = '⏹️';
+    interviewBtn.classList.add('active');
+    interviewBtn.title = 'End Interview';
+    interviewBtn.style.borderColor = '#ff4444';
+    interviewCompanyDisplay.textContent = company || 'Unknown';
+    interviewStatusBar.classList.remove('hidden');
+    mainSuggestion.textContent = `🎙️ Interview Started at ${company}. Good luck!`;
+    
+    // Start the timer
+    if (state.interviewTickInterval) clearInterval(state.interviewTickInterval);
+    state.interviewTickInterval = setInterval(updateInterviewTimer, 1000);
+    updateInterviewTimer();
+  }
+
+  function endInterviewUI() {
+    state.interviewActive = false;
+    state.interviewStartTime = null;
+    interviewBtn.textContent = '🎙️';
+    interviewBtn.classList.remove('active');
+    interviewBtn.title = 'Start Interview Mode';
+    interviewBtn.style.borderColor = '';
+    interviewStatusBar.classList.add('hidden');
+    if (state.interviewTickInterval) {
+      clearInterval(state.interviewTickInterval);
+      state.interviewTickInterval = null;
+    }
+  }
+
+  function updateInterviewTimer() {
+    if (!state.interviewStartTime) return;
+    const elapsed = Math.floor((Date.now() - state.interviewStartTime.getTime()) / 1000);
+    const mins = Math.floor(elapsed / 60);
+    const secs = elapsed % 60;
+    interviewTimer.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+
+  // Open company selection modal
+  interviewBtn.addEventListener('click', async () => {
+    if (state.interviewActive) {
+      // End interview
+      try {
+        interviewBtn.textContent = '⏳';
+        interviewBtn.disabled = true;
+        const summary = await invoke('end_interview');
+        console.log('Interview ended:', summary);
+      } catch (err) {
+        console.error('Failed to end interview:', err);
+        interviewBtn.textContent = '🎙️';
+        interviewBtn.disabled = false;
+        mainSuggestion.textContent = `Error ending interview: ${err}`;
+      }
+    } else {
+      // Show company selector
+      companyModal.classList.remove('hidden');
+      companyModalOverlay.classList.remove('hidden');
+      companyList.innerHTML = '<div class="loading-text">Loading companies...</div>';
+      try {
+        const companies = await invoke('list_companies');
+        companyList.innerHTML = '';
+        if (companies.length === 0) {
+          companyList.innerHTML = '<div class="company-empty">No companies found. Type a custom company name below.</div>';
+        }
+        companies.forEach(c => {
+          const item = document.createElement('div');
+          item.className = 'company-item';
+          const industry = c.industry ? ` <span class="company-industry">${c.industry}</span>` : '';
+          item.innerHTML = `<span class="company-name">${escapeHtml(c.name)}</span>${industry}`;
+          item.onclick = () => startInterview(c.name);
+          companyList.appendChild(item);
+        });
+      } catch (err) {
+        companyList.innerHTML = `<div class="company-error">Error: ${err}</div>`;
+      }
+    }
+  });
+
+  async function startInterview(companyName) {
+    companyModal.classList.add('hidden');
+    companyModalOverlay.classList.add('hidden');
+    try {
+      await invoke('start_interview', { companyName: companyName });
+    } catch (err) {
+      console.error('Failed to start interview:', err);
+      mainSuggestion.textContent = `Error starting interview: ${err}`;
+    }
+  }
+
+  // Custom company input
+  customCompanyInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      const name = customCompanyInput.value.trim();
+      if (name) startInterview(name);
+    }
+  });
+  startWithCustomBtn.addEventListener('click', () => {
+    const name = customCompanyInput.value.trim();
+    if (name) startInterview(name);
+  });
+
+  // Close company modal
+  const closeCompanyModals = [closeCompanyModalBtn, companyModalOverlay];
+  closeCompanyModals.forEach(el => {
+    if (el) el.addEventListener('click', () => {
+      companyModal.classList.add('hidden');
+      companyModalOverlay.classList.add('hidden');
+    });
+  });
+
+  // ─── Summary Modal ─────────────────────────────────────────────────────
+
+  function showSummaryModal(summary) {
+    document.getElementById('interview-btn').textContent = '🎙️';
+    document.getElementById('interview-btn').disabled = false;
+    summaryContent.innerHTML = buildSummaryHTML(summary);
+    summaryModal.classList.remove('hidden');
+    summaryModalOverlay.classList.remove('hidden');
+  }
+
+  function buildSummaryHTML(summary) {
+    let html = `<div class="summary-header">
+      <div class="summary-meta">
+        <span class="summary-company">${escapeHtml(summary.company)}</span>
+        <span class="summary-duration">${formatDuration(summary.duration_seconds)}</span>
+        <span class="summary-questions">${summary.transcript_count} questions</span>
+      </div>
+    </div>`;
+
+    // Summary text
+    html += `<div class="summary-section">
+      <div class="summary-text">${summary.summary_text.replace(/\n/g, '<br>')}</div>
+    </div>`;
+
+    // Strengths
+    if (summary.strengths && summary.strengths.length > 0) {
+      html += `<div class="summary-section">
+        <div class="summary-section-title">✅ Key Strengths</div>
+        <ul class="summary-list">
+          ${summary.strengths.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+        </ul>
+      </div>`;
+    }
+
+    // Areas to improve
+    if (summary.areas_to_improve && summary.areas_to_improve.length > 0) {
+      html += `<div class="summary-section">
+        <div class="summary-section-title">📈 Areas to Improve</div>
+        <ul class="summary-list">
+          ${summary.areas_to_improve.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+        </ul>
+      </div>`;
+    }
+
+    // Recommended stories
+    if (summary.recommended_stories && summary.recommended_stories.length > 0) {
+      html += `<div class="summary-section">
+        <div class="summary-section-title">⭐ Recommended STAR Stories</div>
+        <ul class="summary-list">
+          ${summary.recommended_stories.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+        </ul>
+      </div>`;
+    }
+
+    return html;
+  }
+
+  function formatDuration(seconds) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
+  }
+
+  // Close summary modal
+  const closeSummaryElements = [closeSummaryModalBtn, summaryModalOverlay];
+  closeSummaryElements.forEach(el => {
+    if (el) el.addEventListener('click', () => {
+      summaryModal.classList.add('hidden');
+      summaryModalOverlay.classList.add('hidden');
+    });
+  });
+
+  // ─── Core HUD Logic ────────────────────────────────────────────────────
 
   function addTranscription(text) {
     state.conversationHistory.push(text);
@@ -332,6 +572,26 @@ document.addEventListener('DOMContentLoaded', () => {
       await invoke('open_profile_window');
     } catch (err) {
       console.error('Failed to open profile window:', err);
+    }
+  });
+
+  // Minimal mode toggle
+  minimalBtn.addEventListener('click', async () => {
+    try {
+      const hudContainer = document.getElementById('hud-container');
+      const isCurrentlyMinimal = hudContainer.classList.contains('minimal');
+      await invoke('set_minimal_mode', { minimal: !isCurrentlyMinimal });
+    } catch (err) {
+      console.error('Failed to toggle minimal mode:', err);
+    }
+  });
+
+  // Click on minimal icon to expand back
+  minimalIcon.addEventListener('click', async () => {
+    try {
+      await invoke('set_minimal_mode', { minimal: false });
+    } catch (err) {
+      console.error('Failed to expand from minimal mode:', err);
     }
   });
 

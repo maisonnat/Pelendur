@@ -34,6 +34,7 @@ pub struct AppState {
     pub knowledge_manager: Arc<Mutex<knowledge::personal::KnowledgeManager>>,
     pub graph_provider: Arc<Mutex<Option<ghostai_pilot::knowledge::graph::GraphKnowledgeProvider>>>,
     pub is_locked: Arc<Mutex<bool>>,
+    pub is_minimal: Arc<Mutex<bool>>,
     pub conversation: Arc<Mutex<Vec<llm::ChatMessage>>>,
     pub active_streams: Arc<Mutex<Vec<StreamWrapper>>>,
     pub interview_session: Arc<Mutex<Option<InterviewSession>>>,
