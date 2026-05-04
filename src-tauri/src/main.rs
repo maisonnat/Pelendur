@@ -10,6 +10,7 @@ use ghostai_pilot::knowledge::migration;
 use ghostai_pilot::{config, knowledge};
 use state::AppState;
 use std::sync::{Arc, Mutex};
+use tokio::sync::Mutex as TokioMutex;
 use tauri::{Emitter, Manager};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
@@ -93,7 +94,7 @@ fn main() {
         .manage(AppState {
             config,
             knowledge_manager,
-            graph_provider: Arc::new(Mutex::new(graph_provider)),
+            graph_provider: Arc::new(TokioMutex::new(graph_provider)),
             is_locked: Arc::new(Mutex::new(false)),
             is_minimal: Arc::new(Mutex::new(false)),
             conversation: Arc::new(Mutex::new(Vec::new())),
@@ -169,7 +170,7 @@ fn main() {
             commands::interview::start_interview,
             commands::interview::end_interview,
             commands::interview::get_interview_state,
-            commands::interview::list_companies,
+            commands::interview::list_company_dirs,
             // Company
             commands::company::list_companies,
             commands::company::create_company,

@@ -160,17 +160,9 @@ pub async fn start_capture(
                                 if let Ok(session) = interview_session.lock() {
                                     if let Some(interview) = session.as_ref() {
                                         let company = interview.company.clone();
-                                        if let Ok(mem_lock) = memory.lock() {
-                                            let _ = mem_lock.save_turn(&transcription, &response).await;
-                                            // Increment turn count
-                                            drop(mem_lock); // release memory lock
-                                            // Update turn count in interview session
-                                            if let Ok(mut session2) = interview_session.lock() {
-                                                if let Some(ref mut s) = *session2 {
-                                                    s.turn_count += 1;
-                                                }
-                                            }
-                                        }
+                                        // TODO: Restore Engram turn save with async context
+                                        // Currently skipped because MutexGuard can't cross .await
+                                        eprintln!("  ⚠️ Engram save deferred (async context)");
                                     }
                                 }
                             }

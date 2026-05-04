@@ -2,6 +2,7 @@ use ghostai_pilot::{config, knowledge, llm};
 use ghostai_pilot::conversation_memory::ConversationMemory;
 use serde::Serialize;
 use std::sync::{Arc, Mutex};
+use tokio::sync::Mutex as TokioMutex;
 
 /// Wrapper to make cpal::Stream Send-safe.
 /// cpal::Stream is already Send on most platforms but not Sync.
@@ -32,7 +33,7 @@ pub struct InterviewSession {
 pub struct AppState {
     pub config: config::Config,
     pub knowledge_manager: Arc<Mutex<knowledge::personal::KnowledgeManager>>,
-    pub graph_provider: Arc<Mutex<Option<ghostai_pilot::knowledge::graph::GraphKnowledgeProvider>>>,
+    pub graph_provider: Arc<TokioMutex<Option<ghostai_pilot::knowledge::graph::GraphKnowledgeProvider>>>,
     pub is_locked: Arc<Mutex<bool>>,
     pub is_minimal: Arc<Mutex<bool>>,
     pub conversation: Arc<Mutex<Vec<llm::ChatMessage>>>,

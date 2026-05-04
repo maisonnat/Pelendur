@@ -7,10 +7,19 @@
 use anyhow::{Context, Result};
 use chrono::Utc;
 use rusqlite::{params, Connection};
+use sqlx::SqlitePool;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 use super::embeddings::{PersistentVectorStore, SemanticSearchResult};
+
+/// Helper: create a sqlx pool synchronously (spins up a temporary runtime).
+fn create_sqlx_pool(database_url: &str) -> Result<SqlitePool> {
+    tokio::runtime::Runtime::new()
+        .context("Failed to create tokio runtime for sqlx pool")?
+        .block_on(SqlitePool::connect(database_url))
+        .context("Failed to create sqlx pool")
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SkillEntity {
@@ -108,6 +117,7 @@ impl EntityType {
 
 pub struct KnowledgeGraph {
     conn: Connection,
+    pool: SqlitePool,
 }
 
 impl KnowledgeGraph {
@@ -117,7 +127,8 @@ impl KnowledgeGraph {
             .with_context(|| format!("Failed to open SQLite DB at {:?}", path))?;
         conn.execute_batch("PRAGMA journal_mode=WAL; PRAGMA foreign_keys=ON;")
             .context("Failed to set pragmas")?;
-        let kg = Self { conn };
+        let pool = create_sqlx_pool(&format!("sqlite:{}", path.display()))?;
+        let kg = Self { conn, pool };
         kg.ensure_tables_exist()?;
         Ok(kg)
     }
@@ -126,7 +137,8 @@ impl KnowledgeGraph {
     pub fn open_in_memory() -> Result<Self> {
         let conn = Connection::open_in_memory()?;
         conn.execute_batch("PRAGMA foreign_keys=ON;")?;
-        let kg = Self { conn };
+        let pool = create_sqlx_pool("sqlite::memory:")?;
+        let kg = Self { conn, pool };
         kg.ensure_tables_exist()?;
         Ok(kg)
     }
@@ -755,6 +767,10 @@ impl KnowledgeGraph {
 
     pub fn conn(&self) -> &Connection {
         &self.conn
+    }
+
+    pub fn pool(&self) -> &SqlitePool {
+        &self.pool
     }
 
     pub fn semantic_search(&self, query: &str, top_k: usize) -> Result<Vec<SemanticSearchResult>> {

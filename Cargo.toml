@@ -36,6 +36,7 @@ regex = { version = "1", optional = true }
 candle-core = { version = "0.4", optional = true }
 tokenizers = { version = "0.15", optional = true }
 rusqlite = { version = "0.31", features = ["bundled"] }
+sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
 strsim = "0.11"
 uuid = { version = "1", features = ["v4"] }
 pdf-extract = "0.7"

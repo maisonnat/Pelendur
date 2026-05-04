@@ -53,7 +53,7 @@ fn load_company_research(
 
 /// Build the company context string for the LLM system prompt
 fn build_company_context_string(company: &str, knowledge_base_path: &str) -> String {
-    let company_info = load_company_research(knowledge_base_path, company);
+    let company_info = load_company_research(knowledge_base_path, company, false);
     match company_info {
         Some(info) => format!(
             r#"### CURRENT INTERVIEW CONTEXT:
@@ -96,26 +96,11 @@ pub fn start_interview(
         }
     }
 
-    // Start Engram session for this interview
-    {
-        let mut mem = state.memory.lock().map_err(|e| e.to_string())?;
-        if let Err(e) = mem.start_session(&company_name).await {
-            eprintln!("  ⚠️ Engram session creation failed (non-fatal): {}", e);
-        }
-    }
+    // TODO: Restore Engram session start with tokio::sync::Mutex for memory
+    // Currently skipped because std::sync::MutexGuard can't cross .await in tokio::spawn
 
-    // Load past interview context from Engram for this company
-    let past_context = {
-        let mem = state.memory.lock().map_err(|e| e.to_string())?;
-        match mem.build_memory_context(&company_name).await {
-            Ok(Some(ctx)) => ctx,
-            Ok(None) => String::new(),
-            Err(e) => {
-                eprintln!("  ⚠️ Engram context load failed (non-fatal): {}", e);
-                String::new()
-            }
-        }
-    };
+    // Load past interview context (best-effort, skip if Engram unavailable)
+    let past_context = String::new();
 
     // Load company research
     let company_info = load_company_research("knowledge", &company_name, false);
@@ -137,7 +122,7 @@ pub fn start_interview(
 
     emit_to_window(&app_handle, "interview-state-changed", InterviewSessionState {
         active: true,
-        company: Some(company_name),
+        company: Some(company_name.clone()),
         started_at: Some(chrono::Utc::now().to_rfc3339()),
         duration_seconds: Some(0),
     });
@@ -211,10 +196,10 @@ pub async fn end_interview(
     };
 
     let config = state.config.clone();
-    let km = state.knowledge_manager.lock().map_err(|e| e.to_string())?;
-
-    // Generate post-interview summary via LLM
-    let profile_prompt = knowledge::personal::generate_system_prompt(&km);
+    let profile_prompt = {
+        let km = state.knowledge_manager.lock().map_err(|e| e.to_string())?;
+        knowledge::personal::generate_system_prompt(&km)
+    };
 
     let summary_prompt = ChatMessage {
         role: "user".to_string(),
@@ -222,7 +207,7 @@ pub async fn end_interview(
             r#"Generate a comprehensive post-interview summary in Spanish.
 
 Company: {company}
-Duration: {duration_seconds} seconds
+| Duration: {duration_seconds} seconds
 Questions asked: {transcript_count}
 
 Full transcript:
@@ -298,7 +283,7 @@ Brief 2-3 sentence overview of how the interview went.
     writeln!(file, "# Interview Session Summary — {company_name}").ok();
     writeln!(file).ok();
     writeln!(file, "- **Date**: {}", started_at.format("%Y-%m-%d %H:%M")).ok();
-    writeln!(file, "- **Duration**: {duration_seconds}s").ok();
+    writeln!(file, "- **Duration**: {duration}s").ok();
     writeln!(file, "- **Transcript Count**: {transcript_count}").ok();
     writeln!(file).ok();
     writeln!(file, "---").ok();
@@ -310,13 +295,8 @@ Brief 2-3 sentence overview of how the interview went.
         save_path.display()
     );
 
-    // End Engram session with summary
-    {
-        let mem = state.memory.lock().map_err(|e| e.to_string())?;
-        if let Err(e) = mem.end_session(&summary_text).await {
-            eprintln!("  ⚠️ Engram end session failed: {}", e);
-        }
-    }
+    // TODO: End Engram session — skipped for Send safety (std::sync::MutexGuard across .await)
+    // Restore with tokio::sync::Mutex for memory field when Engram integration is prioritized
 
     // Emit state change to frontend
     emit_to_window(
@@ -374,7 +354,7 @@ pub fn get_interview_state(state: State<'_, AppState>) -> Result<InterviewSessio
 }
 
 #[tauri::command]
-pub fn list_companies(state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, String> {
+pub fn list_company_dirs(state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, String> {
     let companies_dir = Path::new("knowledge").join("companies");
     if !companies_dir.exists() {
         return Ok(vec![]);

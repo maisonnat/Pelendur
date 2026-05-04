@@ -7,7 +7,7 @@ use tauri::State;
 
 #[tauri::command]
 pub fn list_skills(state: State<'_, AppState>) -> Result<Vec<SkillRecord>, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let skills = graph.list_skills().map_err(|e| format!("Failed to list skills: {}", e))?;
@@ -16,7 +16,7 @@ pub fn list_skills(state: State<'_, AppState>) -> Result<Vec<SkillRecord>, Strin
 
 #[tauri::command]
 pub fn create_skill(state: State<'_, AppState>, data: SkillData) -> Result<SkillRecord, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let entity = graph.create_skill(&data.name, data.category.as_deref(), &data.level, data.years, None)
@@ -27,7 +27,7 @@ pub fn create_skill(state: State<'_, AppState>, data: SkillData) -> Result<Skill
 #[tauri::command]
 pub fn update_skill(state: State<'_, AppState>, data: SkillData) -> Result<SkillRecord, String> {
     let id = data.id.as_ref().ok_or_else(|| "Skill ID required for update".to_string())?;
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let existing = graph.get_skill(id).map_err(|e| e.to_string())?.ok_or_else(|| format!("Skill {} not found", id))?;
@@ -41,7 +41,7 @@ pub fn update_skill(state: State<'_, AppState>, data: SkillData) -> Result<Skill
 
 #[tauri::command]
 pub fn delete_skill(state: State<'_, AppState>, id: String) -> Result<bool, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     graph.delete_skill(&id).map_err(|e| format!("Failed to delete skill: {}", e))
@@ -51,7 +51,7 @@ pub fn delete_skill(state: State<'_, AppState>, id: String) -> Result<bool, Stri
 
 #[tauri::command]
 pub fn list_experiences_with_skills(state: State<'_, AppState>) -> Result<Vec<ExperienceWithSkills>, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let experiences = graph.list_experiences().map_err(|e| e.to_string())?;
@@ -74,7 +74,7 @@ pub fn list_experiences_with_skills(state: State<'_, AppState>) -> Result<Vec<Ex
 
 #[tauri::command]
 pub fn create_experience(state: State<'_, AppState>, data: ExperienceData) -> Result<ExperienceWithSkills, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let entity = graph.create_experience(&data.company, &data.role, &data.start_date, data.end_date.as_deref(), data.description.as_deref(), data.highlights.as_deref())
@@ -96,7 +96,7 @@ pub fn create_experience(state: State<'_, AppState>, data: ExperienceData) -> Re
 #[tauri::command]
 pub fn update_experience(state: State<'_, AppState>, data: ExperienceData) -> Result<ExperienceWithSkills, String> {
     let id = data.id.as_ref().ok_or_else(|| "Experience ID required for update".to_string())?;
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let existing = graph.get_experience(id).map_err(|e| e.to_string())?.ok_or_else(|| format!("Experience {} not found", id))?;
@@ -126,7 +126,7 @@ pub fn update_experience(state: State<'_, AppState>, data: ExperienceData) -> Re
 
 #[tauri::command]
 pub fn delete_experience(state: State<'_, AppState>, id: String) -> Result<bool, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let edges = graph.get_edges_for_entity(&id, ghostai_pilot::knowledge::graph::EntityType::Experience).map_err(|e| e.to_string())?;
@@ -138,7 +138,7 @@ pub fn delete_experience(state: State<'_, AppState>, id: String) -> Result<bool,
 
 #[tauri::command]
 pub fn create_star_story(state: State<'_, AppState>, data: StarStoryData) -> Result<StarStoryRecord, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let entity = graph.create_star_story(data.title.as_deref(), &data.situation, &data.task, &data.action, &data.result, data.tags.as_deref(), data.difficulty.as_deref(), data.stakes.as_deref())
@@ -149,7 +149,7 @@ pub fn create_star_story(state: State<'_, AppState>, data: StarStoryData) -> Res
 #[tauri::command]
 pub fn update_star_story(state: State<'_, AppState>, data: StarStoryData) -> Result<StarStoryRecord, String> {
     let id = data.id.as_ref().ok_or_else(|| "Story ID required for update".to_string())?;
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let existing = graph.get_star_story(id).map_err(|e| e.to_string())?.ok_or_else(|| format!("STAR story {} not found", id))?;
@@ -164,7 +164,7 @@ pub fn update_star_story(state: State<'_, AppState>, data: StarStoryData) -> Res
 
 #[tauri::command]
 pub fn delete_star_story(state: State<'_, AppState>, id: String) -> Result<bool, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     graph.delete_star_story(&id).map_err(|e| format!("Failed to delete STAR story: {}", e))
@@ -172,7 +172,7 @@ pub fn delete_star_story(state: State<'_, AppState>, id: String) -> Result<bool,
 
 #[tauri::command]
 pub fn get_star_stories(state: State<'_, AppState>) -> Result<Vec<StarStoryRecord>, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let stories = graph.list_star_stories().map_err(|e| format!("Failed to list STAR stories: {}", e))?;
@@ -184,7 +184,7 @@ pub async fn coach_star_story(state: State<'_, AppState>, story_id: Option<Strin
     let config = state.config.clone();
     let story_context = if let Some(sid) = story_id {
         let result = {
-            let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+            let gp_lock = state.graph_provider.blocking_lock();
             let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
             let graph = provider.graph();
             let story = graph.get_star_story(&sid).map_err(|e| e.to_string())?;
@@ -208,7 +208,7 @@ pub async fn coach_star_story(state: State<'_, AppState>, story_id: Option<Strin
 
 #[tauri::command]
 pub fn add_edge(state: State<'_, AppState>, source_id: String, source_type: String, target_id: String, target_type: String, relation: String, weight: f64) -> Result<EdgeRecord, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let src_t = parse_entity_type(&source_type)?;
@@ -219,7 +219,7 @@ pub fn add_edge(state: State<'_, AppState>, source_id: String, source_type: Stri
 
 #[tauri::command]
 pub fn remove_edge(state: State<'_, AppState>, edge_id: String) -> Result<bool, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     graph.remove_edge(&edge_id).map_err(|e| format!("Failed to remove edge: {}", e))
@@ -227,7 +227,7 @@ pub fn remove_edge(state: State<'_, AppState>, edge_id: String) -> Result<bool, 
 
 #[tauri::command]
 pub fn list_edges_for_entity(state: State<'_, AppState>, entity_id: String, entity_type: String) -> Result<Vec<EdgeRecord>, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let et = parse_entity_type(&entity_type)?;
@@ -239,7 +239,7 @@ pub fn list_edges_for_entity(state: State<'_, AppState>, entity_id: String, enti
 
 #[tauri::command]
 pub fn get_graph_data(state: State<'_, AppState>) -> Result<GraphData, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
 

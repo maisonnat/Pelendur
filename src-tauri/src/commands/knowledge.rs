@@ -62,7 +62,7 @@ pub fn search_knowledge_fuzzy(
     query: String,
     limit: Option<usize>,
 ) -> Result<Vec<FuzzySearchResult>, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let searcher = knowledge::search::EnhancedSearch::new(&graph);
@@ -78,7 +78,7 @@ pub fn search_knowledge_fuzzy(
 
 #[tauri::command]
 pub fn search_knowledge_enhanced(query: String, state: State<'_, AppState>) -> Result<Vec<EnhancedSearchResultIpc>, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let searcher = knowledge::search::EnhancedSearch::new(&graph);
@@ -107,7 +107,7 @@ pub async fn search_knowledge_semantic(
     let query_emb = engine.embed_single(&query).await.map_err(|e| format!("Embedding failed: {}", e))?;
 
     let (entity_texts, texts_to_embed): (std::collections::HashMap<String, (String, String, String)>, Vec<(String, String)>) = {
-        let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+        let gp_lock = state.graph_provider.blocking_lock();
         let provider = gp_lock.as_ref().ok_or("Knowledge graph not initialized")?;
         let graph = provider.graph();
         let mut et = std::collections::HashMap::new();
@@ -152,7 +152,7 @@ pub async fn analyze_meeting(
     let duration_minutes = duration_minutes.unwrap_or(0);
 
     let existing_skills: Vec<String> = {
-        let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+        let gp_lock = state.graph_provider.blocking_lock();
         let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
         let graph = provider.graph();
         let searcher = knowledge::search::KnowledgeSearcher::new(&*graph);
@@ -179,7 +179,7 @@ pub async fn analyze_meeting(
 
 #[tauri::command]
 pub fn search_knowledge_context(query: String, state: State<'_, AppState>) -> Result<Vec<ContextResult>, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let searcher = knowledge::search::KnowledgeSearcher::new(&*graph);
@@ -193,7 +193,7 @@ pub fn search_knowledge_context(query: String, state: State<'_, AppState>) -> Re
 
 #[tauri::command]
 pub fn find_relevant_stories(context: String, state: State<'_, AppState>) -> Result<Vec<StoryResult>, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let searcher = knowledge::search::KnowledgeSearcher::new(&*graph);
@@ -220,7 +220,7 @@ pub fn match_star_stories(
     max_results: Option<usize>,
     min_score: Option<f64>,
 ) -> Result<Vec<StarMatchResult>, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
 
@@ -284,7 +284,7 @@ pub fn match_star_stories_by_tags(
     tags: Vec<String>,
     state: State<'_, AppState>,
 ) -> Result<Vec<StarMatchResult>, String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
 
@@ -342,7 +342,7 @@ pub fn record_star_story_usage(
     story_id: String,
     state: State<'_, AppState>,
 ) -> Result<(), String> {
-    let gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let gp_lock = state.graph_provider.blocking_lock();
     let provider = gp_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
 

@@ -16,7 +16,7 @@ pub async fn parse_cv(state: State<'_, AppState>, file_path: String) -> Result<C
 
 #[tauri::command]
 pub fn confirm_cv_import(state: State<'_, AppState>, parsed: cv_parser::ParsedCv) -> Result<cv_parser::CvImportResult, String> {
-    let graph_provider_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    let graph_provider_lock = state.graph_provider.blocking_lock();
     let provider = graph_provider_lock.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let graph = provider.graph();
     let result = cv_parser::import_parsed_cv(&graph, &parsed).map_err(|e| format!("Failed to import CV data: {}", e))?;
