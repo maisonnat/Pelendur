@@ -151,11 +151,20 @@ pub async fn start_capture(
             }
         }
 
+        macro_rules! diag { ($($arg:tt)*) => {{
+            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("pelendur-pipe.log") {
+                use std::io::Write;
+                let _ = writeln!(f, $($arg)*);
+            }
+        }}; }
+
         let mut speech_buffer: Vec<f32> = Vec::with_capacity(16000 * 10);
         let mut is_capturing = false;
 
         while let Ok(chunk) = audio_rx.recv() {
-            // Write diag directly to file
+            let rms_val = (chunk.samples.iter().map(|s|s*s).sum::<f32>()/chunk.samples.len() as f32).sqrt();
+            diag!("[DIAG] Chunk: {}samp {}Hz rms={:.4}", chunk.samples.len(), chunk.sample_rate, rms_val);
+            // Audio level visualization
             if let Ok(mut diag_f) = std::fs::OpenOptions::new().create(true).append(true).open("pelendur-pipe.log") {
                 use std::io::Write;
                 let rms = (chunk.samples.iter().map(|s|s*s).sum::<f32>()/chunk.samples.len() as f32).sqrt();
@@ -176,11 +185,13 @@ pub async fn start_capture(
             let vad_event = vad_detector.process(&chunk.samples);
             match vad_event {
                 vad::VadEvent::SpeechStart => {
+                    diag!("[DIAG] VAD SpeechStart (rms={:.4})", rms_val);
                     is_capturing = true;
                     speech_buffer.clear();
                     speech_buffer.extend_from_slice(&chunk.samples);
                 }
                 vad::VadEvent::SpeechEnd { .. } => {
+                    diag!("[DIAG] VAD SpeechEnd (buf={}samp, {}Hz)", speech_buffer.len(), chunk.sample_rate);
                     if is_capturing && !speech_buffer.is_empty() {
                         is_capturing = false;
                         let wav_bytes = match stt::pcm_to_wav(&speech_buffer, chunk.sample_rate) {
@@ -190,10 +201,19 @@ pub async fn start_capture(
                                 continue;
                             }
                         };
-                        if speech_buffer.len() < 8000 { continue; }
+                        if speech_buffer.len() < 8000 {
+                            diag!("[DIAG] Buffer <8k, skip");
+                            continue;
+                        }
+
+                        diag!("[DIAG] Calling STT... buf={}samp {}Hz", speech_buffer.len(), chunk.sample_rate);
 
                         if let Ok(transcription) = rt.block_on(stt::transcribe(&config, &wav_bytes)) {
-                            if transcription.trim().is_empty() { continue; }
+                            if transcription.trim().is_empty() {
+                                diag!("[DIAG] STT returned empty");
+                                continue;
+                            }
+                            diag!("[DIAG] STT OK ({}chars)", transcription.len());
                             println!("  📝 \"{}\"", transcription);
 
                             emit_to_window(&app_handle, "transcription-update", TranscriptionPayload { text: transcription.clone() });
