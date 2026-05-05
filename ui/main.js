@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const lockBtn = document.getElementById('lock-btn');
   const clearBtn = document.getElementById('clear-btn');
   const regenerateBtn = document.getElementById('regenerate-btn');
+  const closeBtn = document.getElementById('close-btn');
   const statusIndicator = document.getElementById('status-indicator');
   const profileBtn = document.getElementById('profile-btn');
   const minimalBtn = document.getElementById('minimal-btn');
@@ -589,6 +590,12 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   regenerateBtn.addEventListener('click', () => invoke('regenerate'));
+
+  closeBtn.addEventListener('click', async () => {
+    try {
+      await invoke('close_app');
+    } catch(e) { /* ignore */ }
+  });
 
   profileBtn.addEventListener('click', async () => {
     try {

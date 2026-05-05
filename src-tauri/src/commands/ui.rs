@@ -61,6 +61,14 @@ pub fn regenerate(app_handle: AppHandle, state: State<'_, AppState>) -> Result<(
     Ok(())
 }
 
+/// Close the application entirely.
+#[tauri::command]
+pub fn close_app(app_handle: AppHandle) -> Result<(), String> {
+    println!("  Closing Pelendur...");
+    app_handle.exit(0);
+    Ok(())
+}
+
 #[tauri::command]
 pub fn open_profile_window(app_handle: AppHandle) -> Result<(), String> {
     if let Some(existing) = app_handle.get_webview_window("profile") {

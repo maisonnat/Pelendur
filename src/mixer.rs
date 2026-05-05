@@ -69,45 +69,59 @@ pub fn start_dual_capture(
         })
         .map_err(|e| format!("Failed to spawn mic bridge thread: {}", e))?;
 
-    // ── Thread 3: Mixer core — read both ring buffers, mix 50/50, send ───
+    // ── Thread 3: Mixer core — accumulate mic until loopback arrives, then mix ───
     std::thread::Builder::new()
         .name("mixer-core".into())
         .spawn(move || {
+            let mut mic_accum: Vec<f32> = Vec::new();
             loop {
                 let lb_chunk = loopback_cons.try_pop();
                 let mic_chunk = mic_cons.try_pop();
+                
+                // Accumulate any mic data
+                if let Some(mic) = mic_chunk {
+                    mic_accum.extend_from_slice(&mic.samples);
+                }
 
-                match (lb_chunk, mic_chunk) {
-                    (Some(lb), Some(mic)) => {
-                        // Both sources have data — mix 50/50.
-                        // Use the loopback's sample rate as the reference.
-                        let mixed = mix_samples(&lb.samples, &mic.samples);
-                        if tx
-                            .send(AudioChunk {
-                                samples: mixed,
-                                sample_rate: lb.sample_rate,
-                            })
-                            .is_err()
-                        {
-                            // Receiver dropped — exit cleanly.
-                            break;
-                        }
+                match lb_chunk {
+                    Some(lb) => {
+                        // Loopback data available — mix with accumulated mic
+                        let mixed = if mic_accum.is_empty() {
+                            lb.samples
+                        } else {
+                            // Truncate or pad mic_accum to match loopback length
+                            if mic_accum.len() >= lb.samples.len() {
+                                let (use_accum, rest) = mic_accum.split_at(lb.samples.len());
+                                let mixed = mix_samples(&lb.samples, use_accum);
+                                mic_accum = rest.to_vec();
+                                mixed
+                            } else {
+                                // Pad with silence
+                                let mut padded = mic_accum.clone();
+                                padded.resize(lb.samples.len(), 0.0);
+                                let mixed = mix_samples(&lb.samples, &padded);
+                                mic_accum.clear();
+                                mixed
+                            }
+                        };
+                        if tx.send(AudioChunk {
+                            samples: mixed,
+                            sample_rate: lb.sample_rate,
+                        }).is_err() { break; }
                     }
-                    (Some(lb), None) => {
-                        // Only loopback data — forward as-is.
-                        if tx.send(lb).is_err() {
-                            break;
+                    None => {
+                        // Only mic data (no loopback yet) — keep accumulating
+                        if mic_accum.len() > 48000 * 5 {
+                            // If we have 5+ seconds of mic with no loopback,
+                            // forward it as-is in chunks
+                            let chunk: Vec<f32> = mic_accum.drain(..16000.min(mic_accum.len())).collect();
+                            if tx.send(AudioChunk {
+                                samples: chunk,
+                                sample_rate: 16000,
+                            }).is_err() { break; }
+                        } else {
+                            std::thread::sleep(std::time::Duration::from_millis(10));
                         }
-                    }
-                    (None, Some(mic)) => {
-                        // Only mic data — forward as-is.
-                        if tx.send(mic).is_err() {
-                            break;
-                        }
-                    }
-                    (None, None) => {
-                        // Both buffers empty — wait briefly before polling again.
-                        std::thread::sleep(std::time::Duration::from_millis(10));
                     }
                 }
             }

@@ -160,6 +160,7 @@ fn main() {
             commands::ui::clear_feed,
             commands::ui::regenerate,
             commands::ui::open_profile_window,
+            commands::ui::close_app,
             // Knowledge search
             commands::knowledge::get_knowledge_graph_stats,
             commands::knowledge::search_knowledge,
