@@ -545,7 +545,8 @@ document.addEventListener('DOMContentLoaded', () => {
     modalOverlay.classList.add('hidden');
     
     try {
-      await invoke('start_capture', { pid, deviceIndex });
+      const mode = deviceIndex !== null && deviceIndex !== undefined ? 'mic' : 'system';
+      await invoke('start_capture', { mode, pid, deviceIndex });
       statusIndicator.style.backgroundColor = '#4CAF50';
       mainSuggestion.textContent = "Conectado. Escuchando...";
     } catch (err) {
