@@ -155,7 +155,13 @@ pub async fn start_capture(
         let mut is_capturing = false;
 
         while let Ok(chunk) = audio_rx.recv() {
-            eprintln!("[DIAG] Chunk: {}samp {}Hz rms={:.4}",chunk.samples.len(),chunk.sample_rate,(chunk.samples.iter().map(|s|s*s).sum::<f32>()/chunk.samples.len() as f32).sqrt());
+            // Write diag directly to file
+            if let Ok(mut diag_f) = std::fs::OpenOptions::new().create(true).append(true).open("pelendur-pipe.log") {
+                use std::io::Write;
+                let rms = (chunk.samples.iter().map(|s|s*s).sum::<f32>()/chunk.samples.len() as f32).sqrt();
+                let _ = writeln!(diag_f, "[DIAG] Chunk: {}samp {}Hz rms={:.4}", 
+                    chunk.samples.len(), chunk.sample_rate, rms);
+            }
             // Audio level visualization ────────────────────────────────
             let (rms, peak) = compute_audio_levels(&chunk.samples);
             let waveform = downsample_waveform(&chunk.samples, WAVEFORM_POINTS);

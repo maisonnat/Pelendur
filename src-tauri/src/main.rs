@@ -123,13 +123,21 @@ fn main() {
             if let Ok(shortcut) = "Ctrl+Alt+L".parse::<Shortcut>() {
                 let _ = app.global_shortcut().register(shortcut);
             }
+            if let Ok(shortcut) = "Ctrl+Shift+Q".parse::<Shortcut>() {
+                let _ = app.global_shortcut().register(shortcut);
+            }
             Ok(())
         })
         .plugin(tauri_plugin_positioner::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new()
-            .with_handler(|app, _shortcut, event| {
+            .with_handler(|app, shortcut, event| {
                 if event.state() == ShortcutState::Pressed {
+                    if shortcut.to_string() == "Ctrl+Shift+Q" {
+                        println!("  🚪 Quitting...");
+                        app.exit(0);
+                        return;
+                    }
                     let app_state = app.state::<AppState>();
                     let is_locked_lock = app_state.is_locked.clone();
                     let window = app.get_webview_window("main").unwrap();
