@@ -12,6 +12,29 @@ use tracing::debug;
 
 #[cfg(feature = "parakeet")]
 use crate::parakeet::ParakeetModel;
+use std::sync::{Mutex, OnceLock};
+
+static PARAKEET_MODEL: OnceLock<Mutex<ParakeetModel>> = OnceLock::new();
+
+/// Initialize the global Parakeet model (call once at startup).
+#[cfg(feature = "parakeet")]
+pub fn init_parakeet_model(model_dir: &std::path::Path, use_encoder: bool) -> Result<()> {
+    let model = ParakeetModel::new(model_dir, use_encoder)
+        .map_err(|e| anyhow::anyhow!("Failed to init Parakeet model: {}", e))?;
+    PARAKEET_MODEL
+        .set(Mutex::new(model))
+        .map_err(|_| anyhow::anyhow!("Parakeet model already initialized"))?;
+    tracing::info!("Global Parakeet model initialized");
+    Ok(())
+}
+
+/// Get a reference to the global Parakeet model.
+#[cfg(feature = "parakeet")]
+pub fn get_parakeet_model() -> Result<&'static Mutex<ParakeetModel>> {
+    PARAKEET_MODEL
+        .get()
+        .ok_or_else(|| anyhow::anyhow!("Parakeet model not initialized"))
+}
 
 /// Encode PCM f32 samples into WAV bytes (16kHz mono, 16-bit)
 pub fn pcm_to_wav(samples: &[f32], sample_rate: u32) -> Result<Vec<u8>> {
@@ -262,8 +285,22 @@ fn num_cpus() -> usize {
 
 /// Stub — Parakeet routes through the dedicated inference thread, not here.
 #[cfg(feature = "parakeet")]
-async fn transcribe_local(_config: &Config, _audio_wav: &[u8]) -> Result<String> {
-    anyhow::bail!("Use inference thread for Parakeet STT")
+async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
+    use hound::WavReader;
+    use std::io::Cursor;
+    // Decode WAV bytes back to f32 samples
+    let mut reader = WavReader::new(Cursor::new(audio_wav))
+        .context("Failed to read WAV for Parakeet")?;
+    let samples: Vec<f32> = reader
+        .samples::<i16>()
+        .filter_map(|s| s.ok())
+        .map(|s| s as f32 / i16::MAX as f32)
+        .collect();
+    let mut model = get_parakeet_model()
+        .map_err(|e| anyhow::anyhow!("Parakeet model not available: {}", e))?
+        .lock()
+        .map_err(|e| anyhow::anyhow!("Parakeet model lock failed: {}", e))?;
+    transcribe_parakeet_sync(&mut model, samples)
 }
 
 /// Transcribe using Parakeet ONNX model (called from dedicated inference thread).

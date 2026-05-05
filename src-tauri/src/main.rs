@@ -90,6 +90,20 @@ fn main() {
         )
     ));
 
+    // Initialize global Parakeet STT model
+    #[cfg(feature = "parakeet")]
+    {
+        let model_dir = std::path::Path::new(&config.parakeet_model_dir);
+        if model_dir.exists() {
+            match ghostai_pilot::stt::init_parakeet_model(model_dir, true) {
+                Ok(()) => println!("  ✅ Parakeet STT model loaded"),
+                Err(e) => eprintln!("  ⚠️  Parakeet init failed: {}", e),
+            }
+        } else {
+            eprintln!("  ⚠️  Parakeet model dir not found: {:?}", model_dir);
+        }
+    }
+
     tauri::Builder::default()
         .manage(AppState {
             config,
@@ -101,6 +115,8 @@ fn main() {
             active_streams: Arc::new(Mutex::new(Vec::new())),
             interview_session: Arc::new(Mutex::new(None)),
             memory,
+            #[cfg(feature = "parakeet")]
+            parakeet_model: Arc::new(Mutex::new(None)),
         })
         .setup(|app| {
             let _window = app.get_webview_window("main").unwrap();
