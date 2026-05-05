@@ -1,0 +1,158 @@
+﻿cargo :      Running DevCommand (`cargo  run --no-default-features --color always --`)
+En línea: 1 Carácter: 37
++ cd C:\Proyectos\Pelendur\src-tauri; cargo tauri dev 2>&1 | Out-File - ...
++                                     ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (     Running De...lor always --`):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+        Info Watching C:\Proyectos\Pelendur\src-tauri for changes...
+[1m[93mwarning[0m[1m[97m: unused imports: `debug`, `info`, and `warn`[0m
+ [1m[96m--> [0mC:\Proyectos\Pelendur\src\audio.rs:3:15
+  [1m[96m|[0m
+[1m[96m3[0m [1m[96m|[0m use tracing::{debug, info, warn};
+  [1m[96m|[0m               [1m[93m^^^^^[0m  [1m[93m^^^^[0m  [1m[93m^^^^[0m
+  [1m[96m|[0m
+  [1m[96m= [0m[1m[97mnote[0m: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+[1m[93mwarning[0m[1m[97m: field `use_api` is never read[0m
+  [1m[96m--> [0mC:\Proyectos\Pelendur\src\knowledge\embeddings.rs:88:5
+   [1m[96m|[0m
+[1m[96m85[0m [1m[96m|[0m pub struct VectorStore {
+   [1m[96m|[0m            [1m[96m-----------[0m [1m[96mfield in this struct[0m
+[1m[96m...[0m
+[1m[96m88[0m [1m[96m|[0m     use_api: bool,
+   [1m[96m|[0m     [1m[93m^^^^^^^[0m
+   [1m[96m|[0m
+   [1m[96m= [0m[1m[97mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+[1m[93mwarning[0m: `ghostai-pilot` (lib) generated 2 warnings (run `cargo fix --lib -p ghostai-pilot` to apply 1 
+suggestion)
+[1m[92m   Compiling[0m pelendur-overlay v0.1.0 (C:\Proyectos\Pelendur\src-tauri)
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused import: `config`[0m
+ [1m[96m--> [0msrc\commands\audio.rs:2:28
+  [1m[96m|[0m
+[1m[96m2[0m [1m[96m|[0m use ghostai_pilot::{audio, config, knowledge, llm, loopback, stt, vad};
+  [1m[96m|[0m                            [1m[93m^^^^^^[0m
+  [1m[96m|[0m
+  [1m[96m= [0m[1m[97mnote[0m: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused import: `ghostai_pilot::knowledge::graph::KnowledgeGraph`[0m
+ [1m[96m--> [0msrc\commands\company.rs:4:5
+  [1m[96m|[0m
+[1m[96m4[0m [1m[96m|[0m use ghostai_pilot::knowledge::graph::KnowledgeGraph;
+  [1m[96m|[0m     [1m[93m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[93mwarning[0m[1m[97m: unused import: `tokio::task`[0m
+ [1m[96m--> [0msrc\commands\company.rs:7:5
+  [1m[96m|[0m
+[1m[96m7[0m [1m[96m|[0m use tokio::task;
+  [1m[96m|[0m     [1m[93m^^^^^^^^^^^[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused import: `ghostai_pilot::knowledge::graph::KnowledgeGraph`[0m
+ [1m[96m--> [0msrc\commands\graph.rs:3:5
+  [1m[96m|[0m
+[1m[96m3[0m [1m[96m|[0m use ghostai_pilot::knowledge::graph::KnowledgeGraph;
+  [1m[96m|[0m     [1m[93m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused imports: `SuggestionPayload` and `TranscriptionPayload`[0m
+ [1m[96m--> [0msrc\commands\interview.rs:1:48
+  [1m[96m|[0m
+[1m[96m1[0m [1m[96m|[0m use crate::state::{AppState, InterviewSession, SuggestionPayload, TranscriptionPayload};
+  [1m[96m|[0m                                                [1m[93m^^^^^^^^^^^^^^^^^[0m  
+[1m[93m^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[93mwarning[0m[1m[97m: unused import: `ghostai_pilot::knowledge`[0m
+ [1m[96m--> [0msrc\commands\interview.rs:3:5
+  [1m[96m|[0m
+[1m[96m3[0m [1m[96m|[0m use ghostai_pilot::knowledge;
+  [1m[96m|[0m     [1m[93m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[93mwarning[0m[1m[97m: unused imports: `Arc` and `Mutex`[0m
+ [1m[96m--> [0msrc\commands\interview.rs:8:17
+  [1m[96m|[0m
+[1m[96m8[0m [1m[96m|[0m use std::sync::{Arc, Mutex};
+  [1m[96m|[0m                 [1m[93m^^^[0m  [1m[93m^^^^^[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused import: `Emitter`[0m
+ [1m[96m--> [0msrc\commands\audio.rs:4:40
+  [1m[96m|[0m
+[1m[96m4[0m [1m[96m|[0m use tauri::{AppHandle, Manager, State, Emitter};
+  [1m[96m|[0m                                        [1m[93m^^^^^^^[0m
+
+[1m[93mwarning[0m[1m[97m: unused import: `Emitter`[0m
+ [1m[96m--> [0msrc\commands\interview.rs:9:24
+  [1m[96m|[0m
+[1m[96m9[0m [1m[96m|[0m use tauri::{AppHandle, Emitter, Manager, State};
+  [1m[96m|[0m                        [1m[93m^^^^^^^[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused variable: `company`[0m
+   [1m[96m--> [0msrc\commands\audio.rs:162:45
+    [1m[96m|[0m
+[1m[96m162[0m [1m[96m|[0m [1m[96m...[0m                   let company = interview.company.clone();
+    [1m[96m|[0m                           [1m[93m^^^^^^^[0m [1m[93mhelp: if this is intentional, prefix it 
+with an underscore: `_company`[0m
+    [1m[96m|[0m
+    [1m[96m= [0m[1m[97mnote[0m: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+[1m[93mwarning[0m[1m[97m: unused variable: `memory`[0m
+  [1m[96m--> [0msrc\commands\audio.rs:41:9
+   [1m[96m|[0m
+[1m[96m41[0m [1m[96m|[0m     let memory = state.memory.clone();
+   [1m[96m|[0m         [1m[93m^^^^^^[0m [1m[93mhelp: if this is intentional, prefix it with an underscore: 
+`_memory`[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused variable: `state`[0m
+   [1m[96m--> [0msrc\commands\company.rs:113:37
+    [1m[96m|[0m
+[1m[96m113[0m [1m[96m|[0m pub fn get_company_research_context(state: State<'_, AppState>, company_name: String) 
+-> Result<String, String> {
+    [1m[96m|[0m                                     [1m[93m^^^^^[0m [1m[93mhelp: if this is intentional, 
+prefix it with an underscore: `_state`[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused variable: `state`[0m
+   [1m[96m--> [0msrc\commands\interview.rs:361:30
+    [1m[96m|[0m
+[1m[96m361[0m [1m[96m|[0m pub fn list_company_research(state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, 
+String> {
+    [1m[96m|[0m                              [1m[93m^^^^^[0m [1m[93mhelp: if this is intentional, prefix it 
+with an underscore: `_state`[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: field `0` is never read[0m
+  [1m[96m--> [0msrc\state.rs:10:26
+   [1m[96m|[0m
+[1m[96m10[0m [1m[96m|[0m pub struct StreamWrapper(pub cpal::Stream);
+   [1m[96m|[0m            [1m[96m-------------[0m [1m[93m^^^^^^^^^^^^^^^^[0m
+   [1m[96m|[0m            [1m[96m|[0m
+   [1m[96m|[0m            [1m[96mfield in this struct[0m
+   [1m[96m|[0m
+   [1m[96m= [0m[1m[97mhelp[0m: consider removing this field
+   [1m[96m= [0m[1m[97mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m: `pelendur-overlay` (bin "pelendur-overlay") generated 14 warnings (run `cargo fix --bin 
+"pelendur-overlay" -p pelendur-overlay` to apply 11 suggestions)
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 56.99s
+[1m[92m     Running[0m `C:\Proyectos\Pelendur\target-pelendur\debug\pelendur-overlay.exe`
+  Ôä╣´©Å  profile.yaml not found at "knowledge\\personal\\profile.yaml" ÔÇö skipping migration
+  Ô£à Knowledge graph initialized
+[1m[91merror[0m: process didn't exit successfully: 
+`C:\Proyectos\Pelendur\target-pelendur\debug\pelendur-overlay.exe` (exit code: 0xffffffff)

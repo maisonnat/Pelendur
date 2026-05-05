@@ -1,0 +1,1538 @@
+﻿cargo :      Running DevCommand (`cargo  run --no-default-features --color always --`)
+En línea: 1 Carácter: 37
++ cd C:\Proyectos\Pelendur\src-tauri; cargo tauri dev 2>&1 | Out-File - ...
++                                     ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (     Running De...lor always --`):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+        Info Watching C:\Proyectos\Pelendur\src-tauri for changes...
+[1m[92m   Compiling[0m proc-macro2 v1.0.106
+[1m[92m   Compiling[0m quote v1.0.45
+[1m[92m   Compiling[0m unicode-ident v1.0.24
+[1m[92m   Compiling[0m cfg-if v1.0.4
+[1m[92m   Compiling[0m windows-link v0.2.1
+[1m[92m   Compiling[0m itoa v1.0.18
+[1m[92m   Compiling[0m serde v1.0.228
+[1m[92m   Compiling[0m memchr v2.8.0
+[1m[92m   Compiling[0m zerocopy v0.8.48
+[1m[92m   Compiling[0m serde_core v1.0.228
+[1m[92m   Compiling[0m bytes v1.11.1
+[1m[92m   Compiling[0m scopeguard v1.2.0
+[1m[92m   Compiling[0m parking_lot_core v0.9.12
+[1m[92m   Compiling[0m autocfg v1.5.0
+[1m[92m   Compiling[0m litemap v0.8.2
+[1m[92m   Compiling[0m writeable v0.6.3
+[1m[96m    Building[0m [                           ] 0/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m lock_api v0.4.14
+[1m[96m    Building[0m [                           ] 1/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m utf8_iter v1.0.4
+[1m[96m    Building[0m [                           ] 2/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m percent-encoding v2.3.2
+[1m[96m    Building[0m [                           ] 3/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m icu_properties_data v2.2.0
+[1m[96m    Building[0m [                           ] 4/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m icu_normalizer_data v2.2.0
+[1m[92m   Compiling[0m byteorder v1.5.0
+[1m[96m    Building[0m [                           ] 6/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m stable_deref_trait v1.2.1
+[1m[96m    Building[0m [                           ] 7/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-sys v0.61.2
+[1m[96m    Building[0m [                           ] 8/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m zmij v1.0.21
+[1m[96m    Building[0m [                           ] 9/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m getrandom v0.2.17
+[1m[96m    Building[0m [                          ] 10/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m shlex v1.3.0
+[1m[96m    Building[0m [                          ] 11/603: serde_cÔÇª
+[1m[96m    Building[0m [                          ] 12/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m rand_core v0.6.4
+[1m[96m    Building[0m [                          ] 13/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m find-msvc-tools v0.1.9
+[1m[96m    Building[0m [                          ] 14/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m smallvec v1.15.1
+[1m[96m    Building[0m [                          ] 15/603: serde_cÔÇª
+[1m[96m    Building[0m [                          ] 16/603: serde_cÔÇª
+[1m[96m    Building[0m [                          ] 17/603: serde_cÔÇª
+[1m[96m    Building[0m [                          ] 18/603: serde_cÔÇª
+[1m[96m    Building[0m [                          ] 19/603: serde_cÔÇª
+[1m[96m    Building[0m [                          ] 20/603: serde_cÔÇª
+[1m[96m    Building[0m [                          ] 21/603: serde_cÔÇª
+[1m[96m    Building[0m [                          ] 22/603: serde_cÔÇª
+[1m[96m    Building[0m [                          ] 23/603: serde_cÔÇª
+[1m[96m    Building[0m [>                         ] 24/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m form_urlencoded v1.2.2
+[1m[96m    Building[0m [>                         ] 25/603: serde_cÔÇª
+                                                            
+[1m[92m   Compiling[0m http v1.4.0
+[1m[96m    Building[0m [>                         ] 26/603: serde_cÔÇª
+[1m[96m    Building[0m [>                         ] 27/603: serde_cÔÇª
+[1m[96m    Building[0m [>                         ] 28/603: icu_norÔÇª
+[1m[96m    Building[0m [>                         ] 29/603: icu_norÔÇª
+                                                            
+[1m[92m   Compiling[0m getrandom v0.4.2
+[1m[96m    Building[0m [>                         ] 30/603: icu_norÔÇª
+                                                            
+[1m[92m   Compiling[0m siphasher v1.0.2
+[1m[96m    Building[0m [>                         ] 31/603: icu_norÔÇª
+[1m[96m    Building[0m [>                         ] 32/603: icu_norÔÇª
+                                                            
+[1m[92m   Compiling[0m log v0.4.29
+[1m[96m    Building[0m [>                         ] 33/603: icu_norÔÇª
+                                                            
+[1m[92m   Compiling[0m version_check v0.9.5
+[1m[96m    Building[0m [>                         ] 34/603: icu_norÔÇª
+[1m[96m    Building[0m [>                         ] 35/603: icu_norÔÇª
+                                                            
+[1m[92m   Compiling[0m cc v1.2.60
+[1m[96m    Building[0m [>                         ] 36/603: icu_norÔÇª
+[1m[96m    Building[0m [>                         ] 37/603: zerocopÔÇª
+[1m[96m    Building[0m [>                         ] 38/603: zerocopÔÇª
+[1m[96m    Building[0m [>                         ] 39/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m pin-project-lite v0.2.17
+[1m[96m    Building[0m [>                         ] 40/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m phf_shared v0.11.3
+[1m[96m    Building[0m [>                         ] 41/603: zerocopÔÇª
+[1m[96m    Building[0m [>                         ] 42/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m thiserror v1.0.69
+[1m[96m    Building[0m [>                         ] 43/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m once_cell v1.21.4
+[1m[96m    Building[0m [>                         ] 44/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m thiserror v2.0.18
+[1m[96m    Building[0m [>                         ] 45/603: zerocopÔÇª
+[1m[96m    Building[0m [>                         ] 46/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m equivalent v1.0.2
+[1m[96m    Building[0m [=>                        ] 47/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m hashbrown v0.17.0
+[1m[96m    Building[0m [=>                        ] 48/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m siphasher v0.3.11
+[1m[96m    Building[0m [=>                        ] 49/603: zerocopÔÇª
+[1m[96m    Building[0m [=>                        ] 50/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m aho-corasick v1.1.4
+[1m[96m    Building[0m [=>                        ] 51/603: zerocopÔÇª
+[1m[96m    Building[0m [=>                        ] 52/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m regex-syntax v0.8.10
+[1m[96m    Building[0m [=>                        ] 53/603: zerocopÔÇª
+[1m[96m    Building[0m [=>                        ] 54/603: zerocopÔÇª
+[1m[96m    Building[0m [=>                        ] 55/603: zerocopÔÇª
+[1m[96m    Building[0m [=>                        ] 56/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m serde_json v1.0.149
+[1m[96m    Building[0m [=>                        ] 57/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m syn v2.0.117
+[1m[96m    Building[0m [=>                        ] 58/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m getrandom v0.1.16
+[1m[96m    Building[0m [=>                        ] 59/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m parking_lot v0.12.5
+[1m[96m    Building[0m [=>                        ] 61/603: zerocopÔÇª
+[1m[96m    Building[0m [=>                        ] 62/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m windows_x86_64_msvc v0.52.6
+[1m[96m    Building[0m [=>                        ] 63/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m strsim v0.11.1
+[1m[96m    Building[0m [=>                        ] 64/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m indexmap v2.14.0
+[1m[96m    Building[0m [=>                        ] 65/603: zerocopÔÇª
+[1m[96m    Building[0m [=>                        ] 66/603: zerocopÔÇª
+[1m[96m    Building[0m [=>                        ] 67/603: zerocopÔÇª
+[1m[96m    Building[0m [=>                        ] 68/603: zerocopÔÇª
+[1m[96m    Building[0m [=>                        ] 69/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m typeid v1.0.3
+[1m[96m    Building[0m [==>                       ] 70/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m winnow v1.0.1
+[1m[96m    Building[0m [==>                       ] 71/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m rand_core v0.5.1
+[1m[96m    Building[0m [==>                       ] 72/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m ident_case v1.0.1
+[1m[96m    Building[0m [==>                       ] 73/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m syn v1.0.109
+[1m[96m    Building[0m [==>                       ] 74/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-targets v0.52.6
+[1m[96m    Building[0m [==>                       ] 75/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m toml_writer v1.1.1+spec-1.1.0
+[1m[96m    Building[0m [==>                       ] 76/603: zerocopÔÇª
+[1m[96m    Building[0m [==>                       ] 77/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m winnow v0.7.15
+[1m[96m    Building[0m [==>                       ] 78/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m futures-core v0.3.32
+[1m[96m    Building[0m [==>                       ] 79/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m erased-serde v0.4.10
+[1m[96m    Building[0m [==>                       ] 80/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m toml_parser v1.1.2+spec-1.1.0
+[1m[96m    Building[0m [==>                       ] 81/603: zerocopÔÇª
+[1m[96m    Building[0m [==>                       ] 82/603: zerocopÔÇª
+[1m[96m    Building[0m [==>                       ] 83/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m rand_pcg v0.2.1
+[1m[96m    Building[0m [==>                       ] 84/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m phf_shared v0.8.0
+[1m[96m    Building[0m [==>                       ] 85/603: zerocopÔÇª
+[1m[96m    Building[0m [==>                       ] 86/603: zerocopÔÇª
+[1m[96m    Building[0m [==>                       ] 87/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m unic-char-range v0.9.0
+[1m[96m    Building[0m [==>                       ] 88/603: zerocopÔÇª
+[1m[96m    Building[0m [==>                       ] 89/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m proc-macro-hack v0.5.20+deprecated
+[1m[96m    Building[0m [==>                       ] 90/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m fnv v1.0.7
+[1m[96m    Building[0m [==>                       ] 91/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m unic-common v0.9.0
+[1m[96m    Building[0m [==>                       ] 92/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m unic-char-property v0.9.0
+[1m[96m    Building[0m [===>                      ] 93/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m phf_shared v0.10.0
+[1m[96m    Building[0m [===>                      ] 94/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m anyhow v1.0.102
+[1m[96m    Building[0m [===>                      ] 95/603: zerocopÔÇª
+[1m[96m    Building[0m [===>                      ] 96/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m unic-ucd-version v0.9.0
+[1m[96m    Building[0m [===>                      ] 97/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m new_debug_unreachable v1.0.6
+[1m[96m    Building[0m [===>                      ] 98/603: zerocopÔÇª
+[1m[96m    Building[0m [===>                      ] 99/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m alloc-no-stdlib v2.0.4
+[1m[96m    Building[0m [===>                     ] 100/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m unic-ucd-ident v0.9.0
+[1m[96m    Building[0m [===>                     ] 101/603: zerocopÔÇª
+[1m[96m    Building[0m [===>                     ] 102/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m dunce v1.0.5
+[1m[96m    Building[0m [===>                     ] 103/603: zerocopÔÇª
+[1m[96m    Building[0m [===>                     ] 104/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m alloc-stdlib v0.2.2
+[1m[96m    Building[0m [===>                     ] 105/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m mac v0.1.1
+[1m[96m    Building[0m [===>                     ] 106/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m precomputed-hash v0.1.1
+[1m[96m    Building[0m [===>                     ] 107/603: zerocopÔÇª
+[1m[96m    Building[0m [===>                     ] 108/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m brotli-decompressor v5.0.0
+[1m[96m    Building[0m [===>                     ] 109/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m toml_datetime v0.7.5+spec-1.1.0
+[1m[96m    Building[0m [===>                     ] 110/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m semver v1.0.28
+[1m[96m    Building[0m [===>                     ] 111/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m serde_spanned v1.1.1
+[1m[96m    Building[0m [===>                     ] 112/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m futf v0.1.5
+[1m[96m    Building[0m [===>                     ] 113/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m libc v0.2.185
+[1m[96m    Building[0m [===>                     ] 114/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m typenum v1.19.0
+[1m[96m    Building[0m [===>                     ] 115/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m dtoa v1.0.11
+[1m[96m    Building[0m [===>                     ] 116/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m bitflags v1.3.2
+[1m[96m    Building[0m [===>                     ] 117/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m utf-8 v0.7.6
+[1m[96m    Building[0m [===>                     ] 118/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m toml v0.9.12+spec-1.1.0
+[1m[96m    Building[0m [===>                     ] 119/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m uuid v1.23.0
+[1m[96m    Building[0m [===>                     ] 120/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m tendril v0.4.3
+[1m[96m    Building[0m [====>                    ] 121/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m dtoa-short v0.3.5
+[1m[96m    Building[0m [====>                    ] 122/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m generic-array v0.14.7
+[1m[96m    Building[0m [====>                    ] 123/603: zerocopÔÇª
+[1m[96m    Building[0m [====>                    ] 124/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m indexmap v1.9.3
+[1m[96m    Building[0m [====>                    ] 125/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m nodrop v0.1.14
+[1m[92m   Compiling[0m glob v0.3.3
+[1m[96m    Building[0m [====>                    ] 127/603: zerocopÔÇª
+[1m[96m    Building[0m [====>                    ] 128/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m camino v1.2.2
+[1m[96m    Building[0m [====>                    ] 129/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m brotli v8.0.2
+[1m[96m    Building[0m [====>                    ] 130/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m convert_case v0.4.0
+[1m[96m    Building[0m [====>                    ] 131/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m matches v0.1.10
+[1m[96m    Building[0m [====>                    ] 132/603: zerocopÔÇª
+[1m[96m    Building[0m [====>                    ] 133/603: zerocopÔÇª
+[1m[96m    Building[0m [====>                    ] 134/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m servo_arc v0.2.0
+[1m[96m    Building[0m [====>                    ] 135/603: zerocopÔÇª
+[1m[96m    Building[0m [====>                    ] 136/603: zerocopÔÇª
+[1m[96m    Building[0m [====>                    ] 137/603: zerocopÔÇª
+[1m[96m    Building[0m [====>                    ] 138/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m regex-automata v0.4.14
+[1m[96m    Building[0m [====>                    ] 139/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m phf v0.8.0
+[1m[96m    Building[0m [====>                    ] 140/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m fxhash v0.2.1
+[1m[96m    Building[0m [====>                    ] 141/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m hashbrown v0.12.3
+[1m[96m    Building[0m [====>                    ] 142/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m schemars v0.8.22
+[1m[96m    Building[0m [====>                    ] 143/603: zerocopÔÇª
+[1m[96m    Building[0m [====>                    ] 144/603: zerocopÔÇª
+[1m[96m    Building[0m [=====>                   ] 145/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m cfb v0.7.3
+[1m[96m    Building[0m [=====>                   ] 146/603: zerocopÔÇª
+[1m[96m    Building[0m [=====>                   ] 147/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m ppv-lite86 v0.2.21
+[1m[96m    Building[0m [=====>                   ] 148/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m synstructure v0.13.2
+[1m[96m    Building[0m [=====>                   ] 149/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m darling_core v0.23.0
+[1m[96m    Building[0m [=====>                   ] 150/603: zerocopÔÇª
+                                                            
+[1m[92m   Compiling[0m serde_derive_internals v0.29.1
+[1m[96m    Building[0m [=====>                   ] 151/603: syn, daÔÇª
+[1m[96m    Building[0m [=====>                   ] 152/603: syn, daÔÇª
+[1m[96m    Building[0m [=====>                   ] 153/603: syn, daÔÇª
+[1m[96m    Building[0m [=====>                   ] 154/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m rand_chacha v0.3.1
+[1m[96m    Building[0m [=====>                   ] 155/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m rand_chacha v0.2.2
+[1m[96m    Building[0m [=====>                   ] 156/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m winapi-util v0.1.11
+[1m[96m    Building[0m [=====>                   ] 157/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m rand v0.8.5
+[1m[96m    Building[0m [=====>                   ] 158/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m rand v0.7.3
+[1m[96m    Building[0m [=====>                   ] 159/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m same-file v1.0.6
+[1m[96m    Building[0m [=====>                   ] 160/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m crossbeam-utils v0.8.21
+[1m[96m    Building[0m [=====>                   ] 161/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m dyn-clone v1.0.20
+[1m[96m    Building[0m [=====>                   ] 162/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m infer v0.19.0
+[1m[96m    Building[0m [=====>                   ] 163/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m walkdir v2.5.0
+[1m[96m    Building[0m [=====>                   ] 164/603: syn, daÔÇª
+[1m[96m    Building[0m [=====>                   ] 165/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m serde-untagged v0.1.9
+[1m[96m    Building[0m [=====>                   ] 166/603: syn, daÔÇª
+[1m[96m    Building[0m [=====>                   ] 167/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m crypto-common v0.1.7
+[1m[96m    Building[0m [=====>                   ] 168/603: syn, daÔÇª
+[1m[96m    Building[0m [======>                  ] 169/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m block-buffer v0.10.4
+[1m[96m    Building[0m [======>                  ] 170/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m mio v1.2.0
+[1m[96m    Building[0m [======>                  ] 171/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m digest v0.10.7
+[1m[96m    Building[0m [======>                  ] 172/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m phf_generator v0.11.3
+[1m[92m   Compiling[0m phf_generator v0.10.0
+[1m[96m    Building[0m [======>                  ] 174/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m socket2 v0.6.3
+[1m[96m    Building[0m [======>                  ] 175/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m vswhom-sys v0.1.3
+[1m[96m    Building[0m [======>                  ] 176/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m phf_codegen v0.11.3
+[1m[96m    Building[0m [======>                  ] 177/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m string_cache_codegen v0.5.4
+[1m[96m    Building[0m [======>                  ] 178/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m heck v0.5.0
+[1m[96m    Building[0m [======>                  ] 179/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-link v0.1.3
+[1m[96m    Building[0m [======>                  ] 180/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m phf_generator v0.8.0
+[1m[96m    Building[0m [======>                  ] 181/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m tracing-core v0.1.36
+[1m[96m    Building[0m [======>                  ] 182/603: syn, daÔÇª
+[1m[96m    Building[0m [======>                  ] 183/603: syn, daÔÇª
+[1m[96m    Building[0m [======>                  ] 184/603: syn, daÔÇª
+                                                            
+[1m[92m   Compiling[0m phf_codegen v0.8.0
+[1m[96m    Building[0m [======>                  ] 185/603: phf_codÔÇª
+                                                            
+[1m[92m   Compiling[0m slab v0.4.12
+[1m[96m    Building[0m [======>                  ] 186/603: phf_codÔÇª
+                                                            
+[1m[92m   Compiling[0m futures-io v0.3.32
+[1m[96m    Building[0m [======>                  ] 187/603: phf_codÔÇª
+                                                            
+[1m[92m   Compiling[0m futures-task v0.3.32
+[1m[96m    Building[0m [======>                  ] 188/603: phf_codÔÇª
+                                                            
+[1m[92m   Compiling[0m markup5ever v0.14.1
+[1m[92m   Compiling[0m option-ext v0.2.0
+[1m[96m    Building[0m [======>                  ] 190/603: phf_codÔÇª
+                                                            
+[1m[92m   Compiling[0m serde_derive v1.0.228
+[1m[96m    Building[0m [======>                  ] 191/603: phf_codÔÇª
+                                                            
+[1m[92m   Compiling[0m zerofrom-derive v0.1.7
+[1m[96m    Building[0m [======>                  ] 192/603: phf_codÔÇª
+                                                            
+[1m[92m   Compiling[0m yoke-derive v0.8.2
+[1m[96m    Building[0m [=======>                 ] 193/603: slab, yÔÇª
+                                                            
+[1m[92m   Compiling[0m zerovec-derive v0.11.3
+[1m[96m    Building[0m [=======>                 ] 194/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m displaydoc v0.2.5
+[1m[96m    Building[0m [=======>                 ] 195/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m thiserror-impl v1.0.69
+[1m[92m   Compiling[0m thiserror-impl v2.0.18
+[1m[96m    Building[0m [=======>                 ] 197/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m phf_macros v0.11.3
+[1m[96m    Building[0m [=======>                 ] 198/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m selectors v0.24.0
+[1m[96m    Building[0m [=======>                 ] 199/603: zerovecÔÇª
+[1m[96m    Building[0m [=======>                 ] 200/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m ctor v0.2.9
+[1m[96m    Building[0m [=======>                 ] 201/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m cssparser-macros v0.6.1
+[1m[96m    Building[0m [=======>                 ] 202/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m match_token v0.1.0
+[1m[96m    Building[0m [=======>                 ] 203/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m phf v0.11.3
+[1m[96m    Building[0m [=======>                 ] 204/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m derive_more v0.99.20
+[1m[96m    Building[0m [=======>                 ] 205/603: zerovecÔÇª
+[1m[96m    Building[0m [=======>                 ] 206/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m cssparser v0.29.6
+[1m[96m    Building[0m [=======>                 ] 207/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m phf_macros v0.10.0
+[1m[96m    Building[0m [=======>                 ] 208/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m regex v1.12.3
+[1m[96m    Building[0m [=======>                 ] 209/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m schemars_derive v0.8.22
+[1m[96m    Building[0m [=======>                 ] 210/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m tracing-attributes v0.1.31
+[1m[96m    Building[0m [=======>                 ] 211/603: zerovecÔÇª
+                                                            
+[1m[92m   Compiling[0m tokio-macros v2.7.0
+[1m[96m    Building[0m [=======>                 ] 212/603: zerovecÔÇª
+[1m[96m    Building[0m [=======>                 ] 213/603: thiserrÔÇª
+[1m[96m    Building[0m [=======>                 ] 214/603: thiserrÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-sys v0.59.0
+[1m[96m    Building[0m [=======>                 ] 215/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m cpufeatures v0.2.17
+[1m[96m    Building[0m [=======>                 ] 216/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m base64 v0.22.1
+[1m[96m    Building[0m [=======>                 ] 217/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m zerofrom v0.1.7
+[1m[96m    Building[0m [========>                ] 218/603: windowsÔÇª
+[1m[96m    Building[0m [========>                ] 219/603: windowsÔÇª
+[1m[96m    Building[0m [========>                ] 220/603: windowsÔÇª
+[1m[96m    Building[0m [========>                ] 221/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m yoke v0.8.2
+[1m[96m    Building[0m [========>                ] 222/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m darling_macro v0.23.0
+[1m[96m    Building[0m [========>                ] 223/603: windowsÔÇª
+[1m[96m    Building[0m [========>                ] 224/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m vswhom v0.1.0
+[1m[96m    Building[0m [========>                ] 225/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-interface v0.59.3
+[1m[96m    Building[0m [========>                ] 226/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-implement v0.60.2
+[1m[96m    Building[0m [========>                ] 227/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m tokio v1.51.1
+[1m[96m    Building[0m [========>                ] 228/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-strings v0.4.2
+[1m[96m    Building[0m [========>                ] 229/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-result v0.3.4
+[1m[96m    Building[0m [========>                ] 230/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m phf v0.10.1
+[1m[96m    Building[0m [========>                ] 231/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m darling v0.23.0
+[1m[96m    Building[0m [========>                ] 232/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m rustc_version v0.4.1
+[1m[96m    Building[0m [========>                ] 233/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m zerovec v0.11.6
+[1m[92m   Compiling[0m zerotrie v0.2.4
+[1m[92m   Compiling[0m serde_with_macros v3.18.0
+[1m[96m    Building[0m [========>                ] 236/603: windowsÔÇª
+[1m[96m    Building[0m [========>                ] 237/603: windowsÔÇª
+[1m[96m    Building[0m [========>                ] 238/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m adler2 v2.0.1
+[1m[96m    Building[0m [========>                ] 239/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m futures-sink v0.3.32
+[1m[96m    Building[0m [========>                ] 240/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m crc32fast v1.5.0
+[1m[96m    Building[0m [========>                ] 241/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m tracing v0.1.44
+[1m[96m    Building[0m [=========>               ] 242/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m zeroize v1.8.2
+[1m[96m    Building[0m [=========>               ] 243/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-core v0.61.2
+[1m[96m    Building[0m [=========>               ] 244/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m dirs-sys v0.5.0
+[1m[96m    Building[0m [=========>               ] 245/603: windowsÔÇª
+[1m[96m    Building[0m [=========>               ] 246/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m dirs v6.0.0
+[1m[96m    Building[0m [=========>               ] 247/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m bitflags v2.11.0
+[1m[96m    Building[0m [=========>               ] 248/603: windowsÔÇª
+[1m[96m    Building[0m [=========>               ] 249/603: windowsÔÇª
+[1m[96m    Building[0m [=========>               ] 250/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m num-traits v0.2.19
+[1m[96m    Building[0m [=========>               ] 251/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m time-core v0.1.8
+[1m[96m    Building[0m [=========>               ] 252/603: windowsÔÇª
+[1m[96m    Building[0m [=========>               ] 253/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m num-conv v0.2.1
+[1m[92m   Compiling[0m powerfmt v0.2.0
+[1m[96m    Building[0m [=========>               ] 255/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m futures-channel v0.3.32
+[1m[96m    Building[0m [=========>               ] 256/603: windowsÔÇª
+[1m[96m    Building[0m [=========>               ] 257/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m sha2 v0.10.9
+[1m[96m    Building[0m [=========>               ] 258/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-threading v0.1.0
+[1m[96m    Building[0m [=========>               ] 259/603: windowsÔÇª
+[1m[96m    Building[0m [=========>               ] 260/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m time-macros v0.2.27
+[1m[96m    Building[0m [=========>               ] 261/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m tinystr v0.8.3
+[1m[92m   Compiling[0m potential_utf v0.1.5
+[1m[96m    Building[0m [=========>               ] 263/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m deranged v0.5.8
+[1m[96m    Building[0m [=========>               ] 264/603: windowsÔÇª
+[1m[96m    Building[0m [=========>               ] 265/603: windowsÔÇª
+[1m[96m    Building[0m [==========>              ] 266/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m ahash v0.8.12
+[1m[96m    Building[0m [==========>              ] 267/603: windowsÔÇª
+[1m[96m    Building[0m [==========>              ] 268/603: windowsÔÇª
+[1m[96m    Building[0m [==========>              ] 269/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m icu_locale_core v2.2.0
+[1m[92m   Compiling[0m icu_collections v2.2.0
+[1m[96m    Building[0m [==========>              ] 271/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m serde_with v3.18.0
+[1m[96m    Building[0m [==========>              ] 272/603: windowsÔÇª
+[1m[96m    Building[0m [==========>              ] 273/603: windowsÔÇª
+[1m[96m    Building[0m [==========>              ] 274/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m vcpkg v0.2.15
+[1m[96m    Building[0m [==========>              ] 275/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m raw-window-handle v0.6.2
+[1m[96m    Building[0m [==========>              ] 276/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m pkg-config v0.3.33
+[1m[96m    Building[0m [==========>              ] 277/603: windowsÔÇª
+[1m[96m    Building[0m [==========>              ] 278/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m string_cache v0.8.9
+[1m[96m    Building[0m [==========>              ] 279/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m jsonptr v0.6.3
+[1m[96m    Building[0m [==========>              ] 280/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m cargo-platform v0.1.9
+[1m[96m    Building[0m [==========>              ] 281/603: windowsÔÇª
+[1m[96m    Building[0m [==========>              ] 282/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m winreg v0.55.0
+[1m[96m    Building[0m [==========>              ] 283/603: winreg,ÔÇª
+                                                            
+[1m[92m   Compiling[0m cargo_toml v0.22.3
+[1m[96m    Building[0m [==========>              ] 284/603: winreg,ÔÇª
+[1m[96m    Building[0m [==========>              ] 285/603: winreg,ÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-numerics v0.2.0
+[1m[96m    Building[0m [==========>              ] 286/603: winreg,ÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-future v0.2.1
+[1m[96m    Building[0m [==========>              ] 287/603: winreg,ÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-collections v0.2.0
+[1m[96m    Building[0m [==========>              ] 288/603: winreg,ÔÇª
+[1m[96m    Building[0m [==========>              ] 289/603: winreg,ÔÇª
+                                                            
+[1m[92m   Compiling[0m cargo_metadata v0.19.2
+[1m[96m    Building[0m [===========>             ] 290/603: winreg,ÔÇª
+                                                            
+[1m[92m   Compiling[0m json-patch v3.0.1
+[1m[96m    Building[0m [===========>             ] 291/603: winreg,ÔÇª
+                                                            
+[1m[92m   Compiling[0m embed-resource v3.0.8
+[1m[96m    Building[0m [===========>             ] 292/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m time v0.3.47
+[1m[96m    Building[0m [===========>             ] 293/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m tauri-winres v0.3.5
+[1m[96m    Building[0m [===========>             ] 294/603: cargo_tÔÇª
+[1m[96m    Building[0m [===========>             ] 295/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m icu_provider v2.2.0
+[1m[96m    Building[0m [===========>             ] 296/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m html5ever v0.29.1
+[1m[96m    Building[0m [===========>             ] 297/603: cargo_tÔÇª
+[1m[96m    Building[0m [===========>             ] 298/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m icu_properties v2.2.0
+[1m[96m    Building[0m [===========>             ] 299/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m icu_normalizer v2.2.0
+[1m[96m    Building[0m [===========>             ] 300/603: cargo_tÔÇª
+[1m[96m    Building[0m [===========>             ] 301/603: cargo_tÔÇª
+[1m[96m    Building[0m [===========>             ] 302/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m futures-macro v0.3.32
+[1m[96m    Building[0m [===========>             ] 303/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m simd-adler32 v0.3.9
+[1m[96m    Building[0m [===========>             ] 304/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m minimal-lexical v0.2.1
+[1m[92m   Compiling[0m windows_x86_64_msvc v0.53.1
+[1m[96m    Building[0m [===========>             ] 306/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m windows v0.61.3
+[1m[96m    Building[0m [===========>             ] 307/603: cargo_tÔÇª
+[1m[96m    Building[0m [===========>             ] 308/603: cargo_tÔÇª
+[1m[96m    Building[0m [===========>             ] 309/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m webview2-com-sys v0.38.2
+[1m[96m    Building[0m [===========>             ] 310/603: cargo_tÔÇª
+[1m[96m    Building[0m [===========>             ] 311/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m nom v7.1.3
+[1m[96m    Building[0m [===========>             ] 312/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m allocator-api2 v0.2.21
+[1m[96m    Building[0m [===========>             ] 313/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m kuchikiki v0.8.8-speedreader
+[1m[96m    Building[0m [============>            ] 314/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m futures-util v0.3.32
+[1m[96m    Building[0m [============>            ] 315/603: cargo_tÔÇª
+[1m[96m    Building[0m [============>            ] 316/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m miniz_oxide v0.8.9
+[1m[96m    Building[0m [============>            ] 318/603: cargo_tÔÇª
+[1m[96m    Building[0m [============>            ] 319/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m dpi v0.1.2
+[1m[96m    Building[0m [============>            ] 320/603: cargo_tÔÇª
+[1m[96m    Building[0m [============>            ] 321/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m cookie v0.18.1
+[1m[96m    Building[0m [============>            ] 322/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m idna_adapter v1.2.1
+[1m[96m    Building[0m [============>            ] 323/603: cargo_tÔÇª
+[1m[96m    Building[0m [============>            ] 324/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m hashbrown v0.14.5
+[1m[96m    Building[0m [============>            ] 325/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m idna v1.1.0
+[1m[96m    Building[0m [============>            ] 326/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-version v0.1.7
+[1m[96m    Building[0m [============>            ] 327/603: cargo_tÔÇª
+[1m[96m    Building[0m [============>            ] 328/603: cargo_tÔÇª
+[1m[96m    Building[0m [============>            ] 329/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m paste v1.0.15
+[1m[96m    Building[0m [============>            ] 330/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m ryu v1.0.23
+[1m[96m    Building[0m [============>            ] 331/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m unicode-segmentation v1.13.2
+[1m[96m    Building[0m [============>            ] 332/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m flate2 v1.1.9
+[1m[96m    Building[0m [============>            ] 333/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m url v2.5.8
+[1m[96m    Building[0m [============>            ] 334/603: cargo_tÔÇª
+[1m[96m    Building[0m [============>            ] 335/603: cargo_tÔÇª
+[1m[96m    Building[0m [============>            ] 336/603: cargo_tÔÇª
+[1m[96m    Building[0m [============>            ] 337/603: cargo_tÔÇª
+[1m[96m    Building[0m [=============>           ] 338/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-targets v0.53.5
+[1m[96m    Building[0m [=============>           ] 339/603: cargo_tÔÇª
+                                                            
+[1m[92m   Compiling[0m hashlink v0.9.1
+[1m[96m    Building[0m [=============>           ] 340/603: nom, saÔÇª
+[1m[96m    Building[0m [=============>           ] 341/603: nom, cfÔÇª
+                                                            
+[1m[92m   Compiling[0m fdeflate v0.3.7
+[1m[96m    Building[0m [=============>           ] 342/603: nom, cfÔÇª
+[1m[96m    Building[0m [=============>           ] 343/603: nom, cfÔÇª
+                                                            
+[1m[92m   Compiling[0m webview2-com-macros v0.8.1
+[1m[96m    Building[0m [=============>           ] 344/603: webviewÔÇª
+                                                            
+[1m[92m   Compiling[0m crossbeam-channel v0.5.15
+[1m[96m    Building[0m [=============>           ] 345/603: crossbeÔÇª
+[1m[96m    Building[0m [=============>           ] 346/603: crossbeÔÇª
+                                                            
+[1m[92m   Compiling[0m urlpattern v0.3.0
+[1m[96m    Building[0m [=============>           ] 347/603: crossbeÔÇª
+                                                            
+[1m[92m   Compiling[0m concurrent-queue v2.5.0
+[1m[96m    Building[0m [=============>           ] 348/603: crossbeÔÇª
+[1m[96m    Building[0m [=============>           ] 349/603: crossbeÔÇª
+[1m[96m    Building[0m [=============>           ] 350/603: crossbeÔÇª
+[1m[96m    Building[0m [=============>           ] 351/603: crossbeÔÇª
+                                                            
+[1m[92m   Compiling[0m ring v0.17.14
+[1m[96m    Building[0m [=============>           ] 352/603: crossbeÔÇª
+[1m[96m    Building[0m [=============>           ] 353/603: crossbeÔÇª
+[1m[96m    Building[0m [=============>           ] 354/603: crossbeÔÇª
+                                                            
+[1m[92m   Compiling[0m winapi v0.3.9
+[1m[96m    Building[0m [=============>           ] 355/603: crossbeÔÇª
+                                                            
+[1m[92m   Compiling[0m httparse v1.10.1
+[1m[92m   Compiling[0m crc-catalog v2.5.0
+[1m[96m    Building[0m [=============>           ] 357/603: crossbeÔÇª
+                                                            
+[1m[92m   Compiling[0m unicode_categories v0.1.1
+[1m[96m    Building[0m [=============>           ] 358/603: crossbeÔÇª
+                                                            
+[1m[92m   Compiling[0m parking v2.2.1
+[1m[96m    Building[0m [=============>           ] 359/603: crossbeÔÇª
+                                                            
+[1m[92m   Compiling[0m crc v3.4.0
+[1m[96m    Building[0m [=============>           ] 360/603: crossbeÔÇª
+[1m[96m    Building[0m [=============>           ] 361/603: crossbeÔÇª
+                                                            
+[1m[92m   Compiling[0m event-listener v5.4.1
+[1m[96m    Building[0m [==============>          ] 362/603: crossbeÔÇª
+[1m[96m    Building[0m [==============>          ] 363/603: ring(buÔÇª
+                                                            
+[1m[92m   Compiling[0m sqlformat v0.2.6
+[1m[96m    Building[0m [==============>          ] 364/603: ring(buÔÇª
+[1m[96m    Building[0m [==============>          ] 365/603: ring(buÔÇª
+[1m[96m    Building[0m [==============>          ] 366/603: ring(buÔÇª
+[1m[96m    Building[0m [==============>          ] 367/603: ring(buÔÇª
+[1m[96m    Building[0m [==============>          ] 368/603: httparsÔÇª
+[1m[96m    Building[0m [==============>          ] 369/603: httparsÔÇª
+                                                            
+[1m[92m   Compiling[0m png v0.17.16
+[1m[96m    Building[0m [==============>          ] 370/603: httparsÔÇª
+[1m[96m    Building[0m [==============>          ] 371/603: httparsÔÇª
+[1m[96m    Building[0m [==============>          ] 372/603: httparsÔÇª
+[1m[96m    Building[0m [==============>          ] 373/603: event-lÔÇª
+[1m[96m    Building[0m [==============>          ] 374/603: event-lÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-sys v0.60.2
+[1m[96m    Building[0m [==============>          ] 375/603: walkdirÔÇª
+[1m[96m    Building[0m [==============>          ] 376/603: walkdirÔÇª
+                                                            
+[1m[92m   Compiling[0m tauri-utils v2.8.3
+[1m[96m    Building[0m [==============>          ] 377/603: infer, ÔÇª
+[1m[96m    Building[0m [==============>          ] 378/603: cookie,ÔÇª
+[1m[96m    Building[0m [==============>          ] 379/603: cookie,ÔÇª
+                                                            
+[1m[92m   Compiling[0m crossbeam-queue v0.3.12
+[1m[96m    Building[0m [==============>          ] 380/603: cookie,ÔÇª
+[1m[96m    Building[0m [==============>          ] 381/603: cookie,ÔÇª
+[1m[96m    Building[0m [==============>          ] 382/603: cookie,ÔÇª
+                                                            
+[1m[92m   Compiling[0m spin v0.9.8
+[1m[96m    Building[0m [==============>          ] 383/603: cookie,ÔÇª
+                                                            
+[1m[92m   Compiling[0m native-tls v0.2.18
+[1m[96m    Building[0m [==============>          ] 384/603: cookie,ÔÇª
+                                                            
+[1m[92m   Compiling[0m base64ct v1.8.3
+[1m[96m    Building[0m [==============>          ] 385/603: cookie,ÔÇª
+                                                            
+[1m[92m   Compiling[0m mime v0.3.17
+[1m[96m    Building[0m [===============>         ] 386/603: cookie,ÔÇª
+                                                            
+[1m[92m   Compiling[0m tauri-runtime v2.10.1
+[1m[96m    Building[0m [===============>         ] 387/603: cookie,ÔÇª
+                                                            
+[1m[92m   Compiling[0m wry v0.54.4
+[1m[96m    Building[0m [===============>         ] 388/603: cookie,ÔÇª
+                                                            
+[1m[92m   Compiling[0m hex v0.4.3
+[1m[96m    Building[0m [===============>         ] 389/603: cookie,ÔÇª
+[1m[96m    Building[0m [===============>         ] 390/603: mio, wrÔÇª
+[1m[96m    Building[0m [===============>         ] 391/603: mio, wrÔÇª
+                                                            
+[1m[92m   Compiling[0m pem-rfc7468 v1.0.0
+[1m[96m    Building[0m [===============>         ] 392/603: mio, wrÔÇª
+[1m[96m    Building[0m [===============>         ] 393/603: mio, wrÔÇª
+[1m[96m    Building[0m [===============>         ] 394/603: mio, wrÔÇª
+                                                            
+[1m[92m   Compiling[0m ico v0.5.0
+[1m[96m    Building[0m [===============>         ] 395/603: wry(buiÔÇª
+[1m[96m    Building[0m [===============>         ] 396/603: wry(buiÔÇª
+[1m[96m    Building[0m [===============>         ] 397/603: wry(buiÔÇª
+[1m[96m    Building[0m [===============>         ] 398/603: wry(buiÔÇª
+[1m[96m    Building[0m [===============>         ] 399/603: wry(buiÔÇª
+                                                            
+[1m[92m   Compiling[0m keyboard-types v0.7.0
+[1m[96m    Building[0m [===============>         ] 400/603: windowsÔÇª
+[1m[96m    Building[0m [===============>         ] 401/603: futuresÔÇª
+                                                            
+[1m[92m   Compiling[0m libsqlite3-sys v0.28.0
+[1m[96m    Building[0m [===============>         ] 402/603: futuresÔÇª
+                                                            
+[1m[92m   Compiling[0m rustls-pki-types v1.14.0
+[1m[96m    Building[0m [===============>         ] 403/603: futuresÔÇª
+[1m[96m    Building[0m [===============>         ] 404/603: rustls-ÔÇª
+[1m[96m    Building[0m [===============>         ] 405/603: rustls-ÔÇª
+                                                            
+[1m[92m   Compiling[0m schannel v0.1.29
+[1m[96m    Building[0m [===============>         ] 406/603: rustls-ÔÇª
+[1m[96m    Building[0m [===============>         ] 407/603: rustls-ÔÇª
+                                                            
+[1m[92m   Compiling[0m http-body v1.0.1
+[1m[96m    Building[0m [===============>         ] 408/603: rustls-ÔÇª
+[1m[96m    Building[0m [===============>         ] 409/603: rustls-ÔÇª
+[1m[96m    Building[0m [===============>         ] 410/603: rustls-ÔÇª
+[1m[96m    Building[0m [================>        ] 411/603: httparsÔÇª
+                                                            
+[1m[92m   Compiling[0m getrandom v0.3.4
+[1m[96m    Building[0m [================>        ] 412/603: httparsÔÇª
+                                                            
+[1m[92m   Compiling[0m untrusted v0.9.0
+[1m[96m    Building[0m [================>        ] 413/603: httparsÔÇª
+                                                            
+[1m[92m   Compiling[0m tauri-runtime-wry v2.10.1
+[1m[96m    Building[0m [================>        ] 414/603: httparsÔÇª
+[1m[96m    Building[0m [================>        ] 415/603: httparsÔÇª
+[1m[96m    Building[0m [================>        ] 416/603: futuresÔÇª
+[1m[96m    Building[0m [================>        ] 417/603: futuresÔÇª
+[1m[96m    Building[0m [================>        ] 418/603: futuresÔÇª
+[1m[96m    Building[0m [================>        ] 419/603: futuresÔÇª
+[1m[96m    Building[0m [================>        ] 420/603: futuresÔÇª
+                                                            
+[1m[92m   Compiling[0m webpki-root-certs v1.0.7
+[1m[96m    Building[0m [================>        ] 421/603: futuresÔÇª
+[1m[96m    Building[0m [================>        ] 422/603: futuresÔÇª
+                                                            
+[1m[92m   Compiling[0m socks v0.3.4
+[1m[96m    Building[0m [================>        ] 423/603: futuresÔÇª
+                                                            
+[1m[92m   Compiling[0m atoi v2.0.0
+[1m[96m    Building[0m [================>        ] 424/603: futuresÔÇª
+                                                            
+[1m[92m   Compiling[0m ureq-proto v0.6.0
+[1m[96m    Building[0m [================>        ] 425/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m der v0.8.0
+[1m[96m    Building[0m [================>        ] 426/603: ureq-prÔÇª
+[1m[96m    Building[0m [================>        ] 427/603: ureq-prÔÇª
+[1m[96m    Building[0m [================>        ] 428/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m either v1.15.0
+[1m[96m    Building[0m [================>        ] 429/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m softbuffer v0.4.8
+[1m[96m    Building[0m [================>        ] 430/603: ureq-prÔÇª
+[1m[96m    Building[0m [================>        ] 431/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m serialize-to-javascript-impl v0.1.2
+[1m[96m    Building[0m [================>        ] 432/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m futures-intrusive v0.5.0
+[1m[96m    Building[0m [================>        ] 433/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m rustls v0.23.38
+[1m[96m    Building[0m [================>        ] 434/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m tower-service v0.3.3
+[1m[96m    Building[0m [=================>       ] 435/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m try-lock v0.2.5
+[1m[96m    Building[0m [=================>       ] 436/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m fastrand v2.4.1
+[1m[96m    Building[0m [=================>       ] 437/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m utf8-zero v0.8.1
+[1m[96m    Building[0m [=================>       ] 438/603: ureq-prÔÇª
+[1m[96m    Building[0m [=================>       ] 439/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m window-vibrancy v0.6.0
+[1m[96m    Building[0m [=================>       ] 440/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m want v0.3.1
+[1m[96m    Building[0m [=================>       ] 441/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m serialize-to-javascript v0.1.2
+[1m[96m    Building[0m [=================>       ] 442/603: ureq-prÔÇª
+[1m[96m    Building[0m [=================>       ] 443/603: ureq-prÔÇª
+[1m[96m    Building[0m [=================>       ] 444/603: ureq-prÔÇª
+                                                            
+[1m[92m   Compiling[0m futures-executor v0.3.32
+[1m[96m    Building[0m [=================>       ] 446/603: ureq-prÔÇª
+[1m[96m    Building[0m [=================>       ] 447/603: ureq-prÔÇª
+[1m[96m    Building[0m [=================>       ] 448/603: softbufÔÇª
+                                                            
+[1m[92m   Compiling[0m muda v0.17.2
+[1m[96m    Building[0m [=================>       ] 449/603: muda, sÔÇª
+                                                            
+[1m[92m   Compiling[0m flume v0.11.1
+[1m[96m    Building[0m [=================>       ] 450/603: muda, sÔÇª
+                                                            
+[1m[92m   Compiling[0m serde_urlencoded v0.7.1
+[1m[96m    Building[0m [=================>       ] 451/603: muda, sÔÇª
+                                                            
+[1m[92m   Compiling[0m tokio-stream v0.1.18
+[1m[96m    Building[0m [=================>       ] 452/603: muda, lÔÇª
+                                                            
+[1m[92m   Compiling[0m serde_repr v0.1.20
+[1m[96m    Building[0m [=================>       ] 453/603: muda, lÔÇª
+                                                            
+[1m[92m   Compiling[0m matrixmultiply v0.3.10
+[1m[96m    Building[0m [=================>       ] 454/603: muda, sÔÇª
+                                                            
+[1m[92m   Compiling[0m subtle v2.6.1
+[1m[96m    Building[0m [=================>       ] 455/603: muda, sÔÇª
+                                                            
+[1m[92m   Compiling[0m atomic-waker v1.1.2
+[1m[96m    Building[0m [=================>       ] 456/603: muda, sÔÇª
+                                                            
+[1m[92m   Compiling[0m unicase v2.9.0
+[1m[96m    Building[0m [=================>       ] 457/603: muda, sÔÇª
+                                                            
+[1m[92m   Compiling[0m hmac-sha256 v1.1.14
+[1m[96m    Building[0m [==================>      ] 459/603: muda, sÔÇª
+                                                            
+[1m[92m   Compiling[0m lzma-rust2 v0.15.7
+[1m[92m   Compiling[0m hyper v1.9.0
+[1m[96m    Building[0m [==================>      ] 461/603: muda, lÔÇª
+[1m[96m    Building[0m [==================>      ] 462/603: muda, lÔÇª
+[1m[96m    Building[0m [==================>      ] 463/603: muda, lÔÇª
+                                                            
+[1m[92m   Compiling[0m tempfile v3.27.0
+[1m[96m    Building[0m [==================>      ] 464/603: muda, tÔÇª
+                                                            
+[1m[92m   Compiling[0m mime_guess v2.0.5
+[1m[96m    Building[0m [==================>      ] 465/603: muda, tÔÇª
+[1m[96m    Building[0m [==================>      ] 466/603: muda, fÔÇª
+[1m[96m    Building[0m [==================>      ] 467/603: muda, fÔÇª
+                                                            
+[1m[92m   Compiling[0m sqlx-core v0.8.0
+[1m[96m    Building[0m [==================>      ] 468/603: muda, fÔÇª
+                                                            
+[1m[92m   Compiling[0m ureq v3.3.0
+[1m[96m    Building[0m [==================>      ] 469/603: muda, fÔÇª
+[1m[96m    Building[0m [==================>      ] 470/603: muda, uÔÇª
+[1m[96m    Building[0m [==================>      ] 471/603: muda, uÔÇª
+[1m[96m    Building[0m [==================>      ] 472/603: muda, uÔÇª
+[1m[96m    Building[0m [==================>      ] 473/603: muda, uÔÇª
+[1m[96m    Building[0m [==================>      ] 474/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m sync_wrapper v1.0.2
+[1m[96m    Building[0m [==================>      ] 475/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-result v0.2.0
+[1m[96m    Building[0m [==================>      ] 476/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-result v0.1.2
+[1m[96m    Building[0m [==================>      ] 477/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m tinyvec_macros v0.1.1
+[1m[96m    Building[0m [==================>      ] 478/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m pom v1.1.0
+[1m[96m    Building[0m [==================>      ] 479/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m ipnet v2.12.0
+[1m[96m    Building[0m [==================>      ] 480/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m dotenvy v0.15.7
+[1m[96m    Building[0m [==================>      ] 481/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m rustls-webpki v0.103.11
+[1m[92m   Compiling[0m rawpointer v0.2.1
+[1m[96m    Building[0m [===================>     ] 483/603: muda, uÔÇª
+[1m[96m    Building[0m [===================>     ] 484/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m tower-layer v0.3.3
+[1m[96m    Building[0m [===================>     ] 485/603: muda, uÔÇª
+[1m[96m    Building[0m [===================>     ] 486/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-core v0.54.0
+[1m[96m    Building[0m [===================>     ] 487/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m hyper-util v0.1.20
+[1m[96m    Building[0m [===================>     ] 488/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m tower v0.5.3
+[1m[96m    Building[0m [===================>     ] 490/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m tinyvec v1.11.0
+[1m[96m    Building[0m [===================>     ] 491/603: muda, uÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-strings v0.1.0
+[1m[96m    Building[0m [===================>     ] 492/603: ureq, rÔÇª
+[1m[96m    Building[0m [===================>     ] 493/603: mime_guÔÇª
+[1m[96m    Building[0m [===================>     ] 494/603: ureq, rÔÇª
+[1m[96m    Building[0m [===================>     ] 495/603: ureq, rÔÇª
+                                                            
+[1m[92m   Compiling[0m webpki-roots v1.0.6
+[1m[96m    Building[0m [===================>     ] 496/603: ureq, rÔÇª
+[1m[96m    Building[0m [===================>     ] 497/603: flume, ÔÇª
+                                                            
+[1m[92m   Compiling[0m num-integer v0.1.46
+[1m[96m    Building[0m [===================>     ] 498/603: flume, ÔÇª
+                                                            
+[1m[92m   Compiling[0m num-complex v0.4.6
+[1m[96m    Building[0m [===================>     ] 499/603: flume, ÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-implement v0.58.0
+[1m[96m    Building[0m [===================>     ] 500/603: ureq, rÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-interface v0.58.0
+[1m[96m    Building[0m [===================>     ] 501/603: ureq, rÔÇª
+                                                            
+[1m[92m   Compiling[0m tauri-plugin v2.5.4
+[1m[96m    Building[0m [===================>     ] 502/603: ureq, rÔÇª
+                                                            
+[1m[92m   Compiling[0m tauri-build v2.5.6
+[1m[96m    Building[0m [===================>     ] 503/603: ureq, rÔÇª
+                                                            
+[1m[92m   Compiling[0m tauri-codegen v2.5.5
+[1m[96m    Building[0m [===================>     ] 504/603: ureq, wÔÇª
+                                                            
+[1m[92m   Compiling[0m md-5 v0.10.6
+[1m[96m    Building[0m [===================>     ] 505/603: ureq, wÔÇª
+                                                            
+[1m[92m   Compiling[0m encoding_rs v0.8.35
+[1m[96m    Building[0m [===================>     ] 506/603: ureq, wÔÇª
+                                                            
+[1m[92m   Compiling[0m lazy_static v1.5.0
+[1m[96m    Building[0m [====================>    ] 507/603: ureq, wÔÇª
+                                                            
+[1m[92m   Compiling[0m ort-sys v2.0.0-rc.12
+[1m[96m    Building[0m [====================>    ] 508/603: ort-sysÔÇª
+                                                            
+[1m[92m   Compiling[0m iri-string v0.7.12
+[1m[96m    Building[0m [====================>    ] 509/603: ort-sysÔÇª
+                                                            
+[1m[92m   Compiling[0m rangemap v1.7.1
+[1m[96m    Building[0m [====================>    ] 510/603: ort-sysÔÇª
+                                                            
+[1m[92m   Compiling[0m cpal v0.15.3
+[1m[96m    Building[0m [====================>    ] 511/603: ort-sysÔÇª
+                                                            
+[1m[92m   Compiling[0m weezl v0.1.12
+[1m[96m    Building[0m [====================>    ] 512/603: ort-sysÔÇª
+                                                            
+[1m[92m   Compiling[0m sqlx-sqlite v0.8.0
+[1m[96m    Building[0m [====================>    ] 513/603: ort-sysÔÇª
+                                                            
+[1m[92m   Compiling[0m rfd v0.16.0
+[1m[96m    Building[0m [====================>    ] 514/603: ort-sysÔÇª
+[1m[96m    Building[0m [====================>    ] 515/603: ort-sysÔÇª
+[1m[96m    Building[0m [====================>    ] 516/603: ort-sysÔÇª
+[1m[96m    Building[0m [====================>    ] 517/603: ort-sysÔÇª
+                                                            
+[1m[92m   Compiling[0m windows-core v0.58.0
+[1m[96m    Building[0m [====================>    ] 518/603: ort-sysÔÇª
+                                                            
+[1m[92m   Compiling[0m sharded-slab v0.1.7
+[1m[96m    Building[0m [====================>    ] 519/603: ort-sysÔÇª
+                                                            
+[1m[92m   Compiling[0m ndarray v0.17.2
+[1m[96m    Building[0m [====================>    ] 520/603: ort-sysÔÇª
+[1m[96m    Building[0m [====================>    ] 521/603: shardedÔÇª
+                                                            
+[1m[92m   Compiling[0m windows v0.54.0
+[1m[96m    Building[0m [====================>    ] 522/603: shardedÔÇª
+[1m[96m    Building[0m [====================>    ] 523/603: shardedÔÇª
+                                                            
+[1m[92m   Compiling[0m unicode-normalization v0.1.25
+[1m[96m    Building[0m [====================>    ] 524/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m lopdf v0.34.0
+[1m[96m    Building[0m [====================>    ] 525/603: ndarrayÔÇª
+[1m[96m    Building[0m [====================>    ] 526/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m tower-http v0.6.8
+[1m[96m    Building[0m [====================>    ] 527/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m sqlx-macros-core v0.8.0
+[1m[96m    Building[0m [====================>    ] 528/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m type1-encoding-parser v0.1.1
+[1m[96m    Building[0m [====================>    ] 529/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m adobe-cmap-parser v0.4.1
+[1m[96m    Building[0m [====================>    ] 530/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m http-body-util v0.1.3
+[1m[96m    Building[0m [=====================>   ] 531/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m tokio-util v0.7.18
+[1m[96m    Building[0m [=====================>   ] 532/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m euclid v0.20.14
+[1m[96m    Building[0m [=====================>   ] 533/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m matchers v0.2.0
+[1m[96m    Building[0m [=====================>   ] 534/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m tracing-log v0.2.0
+[1m[96m    Building[0m [=====================>   ] 535/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m nu-ansi-term v0.50.3
+[1m[96m    Building[0m [=====================>   ] 536/603: nu-ansiÔÇª
+                                                            
+[1m[92m   Compiling[0m thread_local v1.1.9
+[1m[96m    Building[0m [=====================>   ] 537/603: nu-ansiÔÇª
+                                                            
+[1m[92m   Compiling[0m tokio-rustls v0.26.4
+[1m[96m    Building[0m [=====================>   ] 538/603: nu-ansiÔÇª
+                                                            
+[1m[92m   Compiling[0m fallible-streaming-iterator v0.1.9
+[1m[96m    Building[0m [=====================>   ] 539/603: nu-ansiÔÇª
+                                                            
+[1m[92m   Compiling[0m hyper-rustls v0.27.8
+[1m[96m    Building[0m [=====================>   ] 540/603: nu-ansiÔÇª
+                                                            
+[1m[92m   Compiling[0m dasp_sample v0.11.0
+[1m[96m    Building[0m [=====================>   ] 541/603: nu-ansiÔÇª
+                                                            
+[1m[92m   Compiling[0m unsafe-libyaml v0.2.11
+[1m[96m    Building[0m [=====================>   ] 542/603: nu-ansiÔÇª
+                                                            
+[1m[92m   Compiling[0m fallible-iterator v0.3.0
+[1m[96m    Building[0m [=====================>   ] 543/603: nu-ansiÔÇª
+                                                            
+[1m[92m   Compiling[0m postscript v0.14.1
+[1m[96m    Building[0m [=====================>   ] 544/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m reqwest v0.12.28
+[1m[96m    Building[0m [=====================>   ] 545/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m tracing-subscriber v0.3.23
+[1m[96m    Building[0m [=====================>   ] 546/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m windows v0.58.0
+[1m[96m    Building[0m [=====================>   ] 547/603: ndarrayÔÇª
+[1m[96m    Building[0m [=====================>   ] 548/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m sqlx-macros v0.8.0
+[1m[96m    Building[0m [=====================>   ] 549/603: ndarrayÔÇª
+                                                            
+[1m[92m   Compiling[0m rusqlite v0.31.0
+[1m[96m    Building[0m [=====================>   ] 550/603: rusqlitÔÇª
+                                                            
+[1m[92m   Compiling[0m pdf-extract v0.7.12
+[1m[96m    Building[0m [=====================>   ] 551/603: rusqlitÔÇª
+                                                            
+[1m[92m   Compiling[0m serde_yaml v0.9.34+deprecated
+[1m[96m    Building[0m [=====================>   ] 552/603: rusqlitÔÇª
+                                                            
+[1m[92m   Compiling[0m futures v0.3.32
+[1m[96m    Building[0m [=====================>   ] 553/603: rusqlitÔÇª
+                                                            
+[1m[92m   Compiling[0m ort v2.0.0-rc.12
+[1m[96m    Building[0m [=====================>   ] 554/603: rusqlitÔÇª
+[1m[96m    Building[0m [======================>  ] 555/603: rusqlitÔÇª
+                                                            
+[1m[92m   Compiling[0m sqlx v0.8.0
+[1m[96m    Building[0m [======================>  ] 556/603: rusqlitÔÇª
+                                                            
+[1m[92m   Compiling[0m global-hotkey v0.7.0
+[1m[96m    Building[0m [======================>  ] 557/603: rusqlitÔÇª
+                                                            
+[1m[92m   Compiling[0m chrono v0.4.44
+[1m[96m    Building[0m [======================>  ] 558/603: chrono,ÔÇª
+                                                            
+[1m[92m   Compiling[0m hound v3.5.1
+[1m[96m    Building[0m [======================>  ] 559/603: chrono,ÔÇª
+                                                            
+[1m[92m   Compiling[0m window-vibrancy v0.7.1
+[1m[96m    Building[0m [======================>  ] 560/603: chrono,ÔÇª
+[1m[96m    Building[0m [======================>  ] 561/603: chrono,ÔÇª
+[1m[96m    Building[0m [======================>  ] 562/603: chrono,ÔÇª
+[1m[96m    Building[0m [======================>  ] 563/603: chrono,ÔÇª
+[1m[96m    Building[0m [======================>  ] 564/603: chrono,ÔÇª
+[1m[96m    Building[0m [======================>  ] 565/603: chrono,ÔÇª
+[1m[96m    Building[0m [======================>  ] 566/603: chrono,ÔÇª
+[1m[96m    Building[0m [======================>  ] 567/603: chrono,ÔÇª
+[1m[96m    Building[0m [======================>  ] 568/603: chrono,ÔÇª
+[1m[96m    Building[0m [======================>  ] 569/603: chrono,ÔÇª
+[1m[96m    Building[0m [======================>  ] 570/603: rustls,ÔÇª
+[1m[96m    Building[0m [======================>  ] 571/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m tauri v2.10.3
+[1m[92m   Compiling[0m tauri-macros v2.5.5
+[1m[92m   Compiling[0m tauri-plugin-fs v2.5.0
+[1m[92m   Compiling[0m tauri-plugin-global-shortcut v2.3.1
+[1m[92m   Compiling[0m tauri-plugin-dialog v2.7.0
+[1m[92m   Compiling[0m tauri-plugin-positioner v2.3.1
+[1m[92m   Compiling[0m pelendur-overlay v0.1.0 (C:\Proyectos\Pelendur\src-tauri)
+[1m[96m    Building[0m [======================>  ] 572/603: tauri-pÔÇª
+[1m[96m    Building[0m [======================>  ] 573/603: tauri-pÔÇª
+[1m[96m    Building[0m [======================>  ] 574/603: tauri-pÔÇª
+[1m[96m    Building[0m [======================>  ] 575/603: tauri(bÔÇª
+[1m[96m    Building[0m [======================>  ] 576/603: tauri(bÔÇª
+[1m[96m    Building[0m [======================>  ] 577/603: tauri(bÔÇª
+[1m[96m    Building[0m [======================>  ] 578/603: windowsÔÇª
+[1m[96m    Building[0m [=======================> ] 579/603: windowsÔÇª
+[1m[96m    Building[0m [=======================> ] 580/603: windowsÔÇª
+[1m[96m    Building[0m [=======================> ] 581/603: windowsÔÇª
+[1m[96m    Building[0m [=======================> ] 582/603: windowsÔÇª
+[1m[96m    Building[0m [=======================> ] 583/603: windowsÔÇª
+[1m[96m    Building[0m [=======================> ] 584/603: windowsÔÇª
+[1m[96m    Building[0m [=======================> ] 585/603: windowsÔÇª
+[1m[96m    Building[0m [=======================> ] 586/603: pelenduÔÇª
+[1m[96m    Building[0m [=======================> ] 587/603: windowsÔÇª
+                                                            
+[1m[92m   Compiling[0m ghostai-pilot v0.1.0 (C:\Proyectos\Pelendur)
+[1m[96m    Building[0m [=======================> ] 587/603: ghostaiÔÇª
+[1m[96m    Building[0m [=======================> ] 588/603: ghostaiÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused imports: `debug`, `info`, and `warn`[0m
+ [1m[96m--> [0mC:\Proyectos\Pelendur\src\audio.rs:3:15
+  [1m[96m|[0m
+[1m[96m3[0m [1m[96m|[0m use tracing::{debug, info, warn};
+  [1m[96m|[0m               [1m[93m^^^^^[0m  [1m[93m^^^^[0m  [1m[93m^^^^[0m
+  [1m[96m|[0m
+  [1m[96m= [0m[1m[97mnote[0m: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+[1m[96m    Building[0m [=======================> ] 588/603: ghostaiÔÇª
+[1m[96m    Building[0m [=======================> ] 589/603: ghostaiÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: field `use_api` is never read[0m
+  [1m[96m--> [0mC:\Proyectos\Pelendur\src\knowledge\embeddings.rs:88:5
+   [1m[96m|[0m
+[1m[96m85[0m [1m[96m|[0m pub struct VectorStore {
+   [1m[96m|[0m            [1m[96m-----------[0m [1m[96mfield in this struct[0m
+[1m[96m...[0m
+[1m[96m88[0m [1m[96m|[0m     use_api: bool,
+   [1m[96m|[0m     [1m[93m^^^^^^^[0m
+   [1m[96m|[0m
+   [1m[96m= [0m[1m[97mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+[1m[96m    Building[0m [=======================> ] 589/603: ghostaiÔÇª
+                                                            
+[1m[92m   Compiling[0m tao v0.34.8
+[1m[96m    Building[0m [=======================> ] 589/603: ghostaiÔÇª
+[1m[96m    Building[0m [=======================> ] 590/603: ghostaiÔÇª
+                                                            
+[1m[92m   Compiling[0m webview2-com v0.38.2
+[1m[96m    Building[0m [=======================> ] 590/603: ghostaiÔÇª
+                                                            
+[1m[93mwarning[0m: `ghostai-pilot` (lib) generated 2 warnings (run `cargo fix --lib -p ghostai-pilot` to apply 1 
+suggestion)
+[1m[96m    Building[0m [=======================> ] 591/603: webviewÔÇª
+[1m[96m    Building[0m [=======================> ] 592/603: webviewÔÇª
+[1m[96m    Building[0m [=======================> ] 593/603: webviewÔÇª
+[1m[96m    Building[0m [=======================> ] 594/603: webviewÔÇª
+[1m[96m    Building[0m [=======================> ] 595/603: wry, taÔÇª
+[1m[96m    Building[0m [=======================> ] 596/603: tauri-rÔÇª
+[1m[96m    Building[0m [=======================> ] 596/603: tauri, ÔÇª
+[1m[96m    Building[0m [=======================> ] 597/603: tauri   
+[1m[96m    Building[0m [=======================> ] 597/603: tauri-pÔÇª
+[1m[96m    Building[0m [=======================> ] 598/603: tauri-pÔÇª
+[1m[96m    Building[0m [=======================> ] 599/603: tauri-pÔÇª
+[1m[96m    Building[0m [=======================> ] 600/603: tauri, ÔÇª
+[1m[96m    Building[0m [=======================> ] 601/603: tauri-pÔÇª
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused import: `config`[0m
+ [1m[96m--> [0msrc\commands\audio.rs:2:28
+  [1m[96m|[0m
+[1m[96m2[0m [1m[96m|[0m use ghostai_pilot::{audio, config, knowledge, llm, loopback, stt, vad};
+  [1m[96m|[0m                            [1m[93m^^^^^^[0m
+  [1m[96m|[0m
+  [1m[96m= [0m[1m[97mnote[0m: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused import: `ghostai_pilot::knowledge::graph::KnowledgeGraph`[0m
+ [1m[96m--> [0msrc\commands\company.rs:4:5
+  [1m[96m|[0m
+[1m[96m4[0m [1m[96m|[0m use ghostai_pilot::knowledge::graph::KnowledgeGraph;
+  [1m[96m|[0m     [1m[93m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[93mwarning[0m[1m[97m: unused import: `tokio::task`[0m
+ [1m[96m--> [0msrc\commands\company.rs:7:5
+  [1m[96m|[0m
+[1m[96m7[0m [1m[96m|[0m use tokio::task;
+  [1m[96m|[0m     [1m[93m^^^^^^^^^^^[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused import: `ghostai_pilot::knowledge::graph::KnowledgeGraph`[0m
+ [1m[96m--> [0msrc\commands\graph.rs:3:5
+  [1m[96m|[0m
+[1m[96m3[0m [1m[96m|[0m use ghostai_pilot::knowledge::graph::KnowledgeGraph;
+  [1m[96m|[0m     [1m[93m^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused imports: `SuggestionPayload` and `TranscriptionPayload`[0m
+ [1m[96m--> [0msrc\commands\interview.rs:1:48
+  [1m[96m|[0m
+[1m[96m1[0m [1m[96m|[0m use crate::state::{AppState, InterviewSession, SuggestionPayload, TranscriptionPayload};
+  [1m[96m|[0m                                                [1m[93m^^^^^^^^^^^^^^^^^[0m  
+[1m[93m^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[93mwarning[0m[1m[97m: unused import: `ghostai_pilot::knowledge`[0m
+ [1m[96m--> [0msrc\commands\interview.rs:3:5
+  [1m[96m|[0m
+[1m[96m3[0m [1m[96m|[0m use ghostai_pilot::knowledge;
+  [1m[96m|[0m     [1m[93m^^^^^^^^^^^^^^^^^^^^^^^^[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused imports: `Arc` and `Mutex`[0m
+ [1m[96m--> [0msrc\commands\interview.rs:8:17
+  [1m[96m|[0m
+[1m[96m8[0m [1m[96m|[0m use std::sync::{Arc, Mutex};
+  [1m[96m|[0m                 [1m[93m^^^[0m  [1m[93m^^^^^[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused import: `Emitter`[0m
+ [1m[96m--> [0msrc\commands\audio.rs:4:40
+  [1m[96m|[0m
+[1m[96m4[0m [1m[96m|[0m use tauri::{AppHandle, Manager, State, Emitter};
+  [1m[96m|[0m                                        [1m[93m^^^^^^^[0m
+
+[1m[93mwarning[0m[1m[97m: unused import: `Emitter`[0m
+ [1m[96m--> [0msrc\commands\interview.rs:9:24
+  [1m[96m|[0m
+[1m[96m9[0m [1m[96m|[0m use tauri::{AppHandle, Emitter, Manager, State};
+  [1m[96m|[0m                        [1m[93m^^^^^^^[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused variable: `company`[0m
+   [1m[96m--> [0msrc\commands\audio.rs:162:45
+    [1m[96m|[0m
+[1m[96m162[0m [1m[96m|[0m [1m[96m...[0m                   let company = interview.company.clone();
+    [1m[96m|[0m                           [1m[93m^^^^^^^[0m [1m[93mhelp: if this is intentional, prefix it 
+with an underscore: `_company`[0m
+    [1m[96m|[0m
+    [1m[96m= [0m[1m[97mnote[0m: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused variable: `memory`[0m
+  [1m[96m--> [0msrc\commands\audio.rs:41:9
+   [1m[96m|[0m
+[1m[96m41[0m [1m[96m|[0m     let memory = state.memory.clone();
+   [1m[96m|[0m         [1m[93m^^^^^^[0m [1m[93mhelp: if this is intentional, prefix it with an underscore: 
+`_memory`[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused variable: `state`[0m
+   [1m[96m--> [0msrc\commands\company.rs:113:37
+    [1m[96m|[0m
+[1m[96m113[0m [1m[96m|[0m pub fn get_company_research_context(state: State<'_, AppState>, company_name: String) 
+-> Result<String, String> {
+    [1m[96m|[0m                                     [1m[93m^^^^^[0m [1m[93mhelp: if this is intentional, 
+prefix it with an underscore: `_state`[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: unused variable: `state`[0m
+   [1m[96m--> [0msrc\commands\interview.rs:361:30
+    [1m[96m|[0m
+[1m[96m361[0m [1m[96m|[0m pub fn list_company_research(state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, 
+String> {
+    [1m[96m|[0m                              [1m[93m^^^^^[0m [1m[93mhelp: if this is intentional, prefix it 
+with an underscore: `_state`[0m
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m[1m[97m: field `0` is never read[0m
+  [1m[96m--> [0msrc\state.rs:10:26
+   [1m[96m|[0m
+[1m[96m10[0m [1m[96m|[0m pub struct StreamWrapper(pub cpal::Stream);
+   [1m[96m|[0m            [1m[96m-------------[0m [1m[93m^^^^^^^^^^^^^^^^[0m
+   [1m[96m|[0m            [1m[96m|[0m
+   [1m[96m|[0m            [1m[96mfield in this struct[0m
+   [1m[96m|[0m
+   [1m[96m= [0m[1m[97mhelp[0m: consider removing this field
+   [1m[96m= [0m[1m[97mnote[0m: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+[1m[96m    Building[0m [=======================> ] 602/603: pelenduÔÇª
+                                                            
+[1m[93mwarning[0m: `pelendur-overlay` (bin "pelendur-overlay") generated 14 warnings (run `cargo fix --bin 
+"pelendur-overlay" -p pelendur-overlay` to apply 11 suggestions)
+[1m[92m    Finished[0m `dev` profile [unoptimized + debuginfo] target(s) in 2m 42s
+[1m[92m     Running[0m `C:\Proyectos\Pelendur\target-pelendur\debug\pelendur-overlay.exe`
+  Ôä╣´©Å  profile.yaml not found at "knowledge\\personal\\profile.yaml" ÔÇö skipping migration
+  Ô£à Knowledge graph initialized
+  ­ƒöè Starting WASAPI loopback capture (system audio)...
+  Ô£à Audio capture active (mode: system)
+­ƒöè WASAPI: Starting COM MTA init...
+­ƒöè WASAPI: COM MTA initialized Ô£à
+­ƒöè WASAPI: Got default render endpoint Ô£à
+­ƒöè WASAPI: 48000Hz, 2ch, 32bit (mix format)
+­ƒöè WASAPI: wFormatTag=65534, nBlockAlign=8, cbSize=22
+­ƒöè WASAPI: IsFormatSupported(SHARED) = 0x80004003
+­ƒöè WASAPI: Calling Initialize(LOOPBACK | EVENTCALLBACK)...
+­ƒöè WASAPI: Initialize succeeded Ô£à
+­ƒöè WASAPI: Event handle bound Ô£à
+­ƒöè WASAPI: Got IAudioCaptureClient Ô£à
+­ƒöè WASAPI: MMCSS Pro Audio priority active Ô£à
+­ƒöè WASAPI: Loopback capture started Ô£à ÔÇö reading audio frames...
+­ƒôè WASAPI: Sent chunk #1 (48000 samples, energy=0.018687)
+­ƒôè WASAPI: Sent chunk #2 (48000 samples, energy=0.008961)
+[1m[91merror[0m: process didn't exit successfully: 
+`C:\Proyectos\Pelendur\target-pelendur\debug\pelendur-overlay.exe` (exit code: 0xffffffff)

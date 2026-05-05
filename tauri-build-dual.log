@@ -1,0 +1,151 @@
+﻿cargo :         Info Looking up installed tauri packages to check mismatched versions...
+En línea: 1 Carácter: 37
++ cd C:\Proyectos\Pelendur\src-tauri; cargo tauri build 2>&1 | Out-File ...
++                                     ~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (        Info Lo...hed versions...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+    Updating crates.io index
+ Downloading crates ...
+  Downloaded ringbuf v0.4.8
+  Downloaded portable-atomic-util v0.2.6
+  Downloaded portable-atomic v1.13.1
+   Compiling ringbuf v0.4.8
+   Compiling ghostai-pilot v0.1.0 (C:\Proyectos\Pelendur)
+warning: unused imports: `debug`, `info`, and `warn`
+ --> C:\Proyectos\Pelendur\src\audio.rs:3:15
+  |
+3 | use tracing::{debug, info, warn};
+  |               ^^^^^  ^^^^  ^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `use_api` is never read
+  --> C:\Proyectos\Pelendur\src\knowledge\embeddings.rs:88:5
+   |
+85 | pub struct VectorStore {
+   |            ----------- field in this struct
+...
+88 |     use_api: bool,
+   |     ^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ghostai-pilot` (lib) generated 2 warnings (run `cargo fix --lib -p ghostai-pilot` to apply 1 suggestion)
+   Compiling pelendur-overlay v0.1.0 (C:\Proyectos\Pelendur\src-tauri)
+warning: unused import: `config`
+ --> src\commands\audio.rs:2:28
+  |
+2 | use ghostai_pilot::{audio, config, knowledge, llm, loopback, mixer, stt, vad};
+  |                            ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ghostai_pilot::knowledge::graph::KnowledgeGraph`
+ --> src\commands\company.rs:4:5
+  |
+4 | use ghostai_pilot::knowledge::graph::KnowledgeGraph;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `tokio::task`
+ --> src\commands\company.rs:7:5
+  |
+7 | use tokio::task;
+  |     ^^^^^^^^^^^
+
+warning: unused import: `ghostai_pilot::knowledge::graph::KnowledgeGraph`
+ --> src\commands\graph.rs:3:5
+  |
+3 | use ghostai_pilot::knowledge::graph::KnowledgeGraph;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `SuggestionPayload` and `TranscriptionPayload`
+ --> src\commands\interview.rs:1:48
+  |
+1 | use crate::state::{AppState, InterviewSession, SuggestionPayload, TranscriptionPayload};
+  |                                                ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ghostai_pilot::knowledge`
+ --> src\commands\interview.rs:3:5
+  |
+3 | use ghostai_pilot::knowledge;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Arc` and `Mutex`
+ --> src\commands\interview.rs:8:17
+  |
+8 | use std::sync::{Arc, Mutex};
+  |                 ^^^  ^^^^^
+
+warning: unused import: `Emitter`
+ --> src\commands\audio.rs:4:40
+  |
+4 | use tauri::{AppHandle, Manager, State, Emitter};
+  |                                        ^^^^^^^
+
+warning: unused import: `Emitter`
+ --> src\commands\interview.rs:9:24
+  |
+9 | use tauri::{AppHandle, Emitter, Manager, State};
+  |                        ^^^^^^^
+
+warning: unused variable: `interview`
+   --> src\commands\audio.rs:239:49
+    |
+239 | ...                   if let Some(interview) = session.as_ref() {
+    |                                   ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_interview`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `state`
+   --> src\commands\company.rs:113:37
+    |
+113 | pub fn get_company_research_context(state: State<'_, AppState>, company_name: String) -> Result<String, String> {
+    |                                     ^^^^^ help: if this is intentional, prefix it with an underscore: `_state`
+
+warning: unused variable: `state`
+   --> src\commands\interview.rs:361:30
+    |
+361 | pub fn list_company_research(state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, String> {
+    |                              ^^^^^ help: if this is intentional, prefix it with an underscore: `_state`
+
+warning: field `0` is never read
+  --> src\state.rs:10:26
+   |
+10 | pub struct StreamWrapper(pub cpal::Stream);
+   |            ------------- ^^^^^^^^^^^^^^^^
+   |            |
+   |            field in this struct
+   |
+   = help: consider removing this field
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `turn_count` is never read
+  --> src\state.rs:30:9
+   |
+26 | pub struct InterviewSession {
+   |            ---------------- field in this struct
+...
+30 |     pub turn_count: usize,
+   |         ^^^^^^^^^^
+
+warning: `pelendur-overlay` (bin "pelendur-overlay") generated 14 warnings (run `cargo fix --bin "pelendur-overlay" -p 
+pelendur-overlay` to apply 10 suggestions)
+    Finished `release` profile [optimized] target(s) in 1m 22s
+       Built application at: C:\Proyectos\Pelendur\target-pelendur\release\pelendur-overlay.exe
+        Info Patching C:\Proyectos\Pelendur\target-pelendur\release\pelendur-overlay.exe with bundle type information: 
+msi
+        Info Target: x64
+     Running candle for "C:\\Proyectos\\Pelendur\\target-pelendur\\release\\wix\\x64\\main.wxs"
+     Running light to produce C:\Proyectos\Pelendur\target-pelendur\release\bundle\msi\Pelendur 
+Overlay_0.1.0_x64_en-US.msi
+        Info Patching C:\Proyectos\Pelendur\target-pelendur\release\pelendur-overlay.exe with bundle type information: 
+nsis
+        Info Target: x64
+     Running makensis to produce C:\Proyectos\Pelendur\target-pelendur\release\bundle\nsis\Pelendur 
+Overlay_0.1.0_x64-setup.exe
+    Finished 2 bundles at:
+        C:\Proyectos\Pelendur\target-pelendur\release\bundle\msi\Pelendur Overlay_0.1.0_x64_en-US.msi
+        C:\Proyectos\Pelendur\target-pelendur\release\bundle\nsis\Pelendur Overlay_0.1.0_x64-setup.exe
+

@@ -1,0 +1,17 @@
+  ✅ Migration complete:
+     Skills inserted: 0
+     Stories inserted: 0
+     Edges created: 0
+     Weaknesses: 0
+     Achievements: 0
+     Preferences: 0
+     Skipped (existing): 26
+     Previous migration: 2026-05-05T22:51:39.970263300+00:00
+  ✅ Knowledge graph initialized
+  ✅ Parakeet STT model loaded
+  🎙️ Starting dual capture (system audio + microphone mixed 50/50)...
+  🎤 Mic: "Micrófono de los auriculares con micrófono (Alienware AW520H)"
+  ⚙ Intentando abrir dispositivo...
+  ✓ Formato: 16000Hz, 1 canales, F32
+  🚀 Stream activo.
+  ✅ Audio capture active (mode: dual)

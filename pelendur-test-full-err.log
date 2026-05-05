@@ -1,0 +1,17 @@
+🔊 WASAPI: Starting COM MTA init...
+🔊 WASAPI: COM MTA initialized ✅
+🔊 WASAPI: Got default render endpoint ✅
+🔊 WASAPI: 48000Hz, 2ch, 32bit (mix format)
+🔊 WASAPI: wFormatTag=65534, nBlockAlign=8, cbSize=22
+🔊 WASAPI: IsFormatSupported(SHARED) = 0x80004003
+🔊 WASAPI: Calling Initialize(LOOPBACK | EVENTCALLBACK)...
+🔊 WASAPI: Initialize succeeded ✅
+🔊 WASAPI: Event handle bound ✅
+🔊 WASAPI: Got IAudioCaptureClient ✅
+🔊 WASAPI: MMCSS Pro Audio priority active ✅
+🔊 WASAPI: Loopback capture started ✅ — reading audio frames...
+📊 WASAPI: Sent chunk #1 (48000 samples, energy=0.011489)
+📊 WASAPI: Sent chunk #2 (48000 samples, energy=0.010837)
+📊 WASAPI: Sent chunk #3 (48000 samples, energy=0.005874)
+📊 WASAPI: Sent chunk #4 (48000 samples, energy=0.000108)
+📊 WASAPI: Sent chunk #5 (48000 samples, energy=0.017722)

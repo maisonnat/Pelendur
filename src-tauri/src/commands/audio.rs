@@ -155,7 +155,8 @@ pub async fn start_capture(
         let mut is_capturing = false;
 
         while let Ok(chunk) = audio_rx.recv() {
-            // ── Audio level visualization ────────────────────────────────
+            eprintln!("[DIAG] Chunk: {}samp {}Hz rms={:.4}",chunk.samples.len(),chunk.sample_rate,(chunk.samples.iter().map(|s|s*s).sum::<f32>()/chunk.samples.len() as f32).sqrt());
+            // Audio level visualization ────────────────────────────────
             let (rms, peak) = compute_audio_levels(&chunk.samples);
             let waveform = downsample_waveform(&chunk.samples, WAVEFORM_POINTS);
             emit_to_window(&app_handle, "audio-level-update", AudioLevelPayload {

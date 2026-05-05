@@ -3,6 +3,11 @@ name = "pelendur-overlay"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["audio", "parakeet"]
+audio = ["ghostai-pilot/audio"]
+parakeet = ["ghostai-pilot/parakeet"]
+
 [build-dependencies]
 tauri-build = { version = "2.0.0", features = [] }
 
