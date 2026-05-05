@@ -201,7 +201,6 @@ pub async fn end_interview(
     let config = state.config.clone();
     let profile_prompt = {
         let km = state.knowledge_manager.lock().map_err(|e| e.to_string())?;
-        knowledge::personal::generate_system_prompt(&km)
         ghostai_pilot::knowledge::personal::generate_system_prompt(&km)
     };
 
@@ -359,7 +358,6 @@ pub fn get_interview_state(state: State<'_, AppState>) -> Result<InterviewSessio
 }
 
 #[tauri::command]
-pub fn list_company_dirs(state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, String> {
 pub fn list_company_research(state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, String> {
     let companies_dir = Path::new("knowledge").join("companies");
     if !companies_dir.exists() {

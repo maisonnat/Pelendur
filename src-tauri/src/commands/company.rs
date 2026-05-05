@@ -144,26 +144,15 @@ pub struct ResearchStatusIpc {
 }
 
 /// Trigger deep research for a company using NotebookLM + LLM extraction.
-/// Runs in a blocking thread with its own tokio runtime to avoid Send issues.
+/// Acquires graph_provider lock briefly to validate state, then drops it before async.
 #[tauri::command]
-pub fn research_company(
+pub async fn research_company(
     state: State<'_, AppState>,
     company_name: String,
 ) -> Result<ResearchStatusIpc, String> {
-    let company_name = company_name.clone();
-    let status = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|e| format!("Failed to build runtime: {}", e))?
-        .block_on(async move {
-            let researcher = ghostai_pilot::knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
-            researcher.research_company(&company_name, None).await
-        })
-    // Get graph provider
-    {
-        let _gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
-    }
-    // gp_lock dropped here before async
+    // Quick state check — lock and immediately drop
+    let _gp_check = state.graph_provider.blocking_lock();
+    _gp_check.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
 
     // Create researcher and run
     let researcher = ghostai_pilot::knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
@@ -183,9 +172,8 @@ pub fn research_company(
 /// List companies that need research (stubs with no real data).
 #[tauri::command]
 pub async fn list_unresearched_companies(state: State<'_, AppState>) -> Result<Vec<String>, String> {
-    {
-        let _gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
-    }
+    let _gp_check = state.graph_provider.blocking_lock();
+    _gp_check.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
     let researcher = ghostai_pilot::knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
     researcher.list_unresearched_companies()
         .await
@@ -193,21 +181,10 @@ pub async fn list_unresearched_companies(state: State<'_, AppState>) -> Result<V
 }
 
 /// Research all companies that don't have real research data yet.
-/// Runs in a blocking thread with its own tokio runtime.
 #[tauri::command]
-pub fn research_all_companies(state: State<'_, AppState>) -> Result<Vec<ResearchStatusIpc>, String> {
-    let results = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .map_err(|e| format!("Failed to build runtime: {}", e))?
-        .block_on(async move {
-            let researcher = ghostai_pilot::knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
-            researcher.research_all_missing(None).await
-        })
 pub async fn research_all_companies(state: State<'_, AppState>) -> Result<Vec<ResearchStatusIpc>, String> {
-    {
-        let _gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
-    }
+    let _gp_check = state.graph_provider.blocking_lock();
+    _gp_check.as_ref().ok_or_else(|| "Knowledge graph not initialized".to_string())?;
 
     let researcher = ghostai_pilot::knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
     let results = researcher.research_all_missing(None)

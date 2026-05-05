@@ -170,7 +170,6 @@ fn main() {
             commands::interview::start_interview,
             commands::interview::end_interview,
             commands::interview::get_interview_state,
-            commands::interview::list_company_dirs,
             commands::interview::list_company_research,
             // Company
             commands::company::list_companies,

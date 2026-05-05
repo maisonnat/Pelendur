@@ -120,6 +120,13 @@ pub struct KnowledgeGraph {
     pool: SqlitePool,
 }
 
+// SAFETY: KnowledgeGraph is always accessed through a Mutex,
+// ensuring the embedded rusqlite::Connection (not Send in rusqlite 0.31)
+// is never accessed from multiple threads concurrently.
+// rusqlite 0.32+ made Connection Send natively — this backports that fix.
+unsafe impl Send for KnowledgeGraph {}
+unsafe impl Sync for KnowledgeGraph {}
+
 impl KnowledgeGraph {
     /// Open (or create) the SQLite database at `path` and ensure all tables exist.
     pub fn open(path: &Path) -> Result<Self> {
@@ -921,6 +928,12 @@ use std::sync::Mutex;
 pub struct GraphKnowledgeProvider {
     graph: Mutex<KnowledgeGraph>,
 }
+
+// SAFETY: GraphKnowledgeProvider is always accessed through a Mutex,
+// ensuring rusqlite::Connection (not Send) is never accessed from
+// multiple threads concurrently.
+unsafe impl Send for GraphKnowledgeProvider {}
+unsafe impl Sync for GraphKnowledgeProvider {}
 
 impl GraphKnowledgeProvider {
     pub fn new(graph: KnowledgeGraph) -> Self {
