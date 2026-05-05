@@ -103,6 +103,10 @@ document.addEventListener('DOMContentLoaded', () => {
     await listen('suggestion-update', (event) => {
       console.log('JS Received Suggestion:', event.payload.text);
       updateSuggestion(event.payload.text);
+      // Store suggestion text in Rust state for Ctrl+E shortcut
+      invoke('update_suggestion_text', { text: event.payload.text }).catch(e => 
+        console.error('Failed to update suggestion text:', e)
+      );
     });
 
     let lastPartialText = '';
@@ -153,6 +157,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // Listen for interview summary
     await listen('interview-summary', (event) => {
       showSummaryModal(event.payload);
+    });
+
+    // Listen for TTS status updates
+    await listen('tts-status', (event) => {
+      console.log('TTS Status:', event.payload);
+      showTtsStatus(event.payload);
     });
   }
 
@@ -515,6 +525,18 @@ document.addEventListener('DOMContentLoaded', () => {
       
       processList.innerHTML = '';
       
+      // Dual mode: Sistema + Micrófono
+      const dualItem = document.createElement('div');
+      dualItem.className = 'process-item dual-mode recommended';
+      dualItem.innerHTML = '<span>🎙️ Sistema + Micrófono <span class="badge-recommended">Recomendada</span></span>';
+      dualItem.onclick = () => selectSource(null, null, 'dual');
+      processList.appendChild(dualItem);
+
+      const deviceHeader = document.createElement('div');
+      deviceHeader.className = 'process-header';
+      deviceHeader.innerHTML = '<strong>Micrófonos</strong>';
+      processList.appendChild(deviceHeader);
+
       devices.forEach(d => {
         const item = document.createElement('div');
         item.className = 'process-item';
@@ -540,15 +562,15 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  async function selectSource(pid, deviceIndex) {
+  async function selectSource(pid, deviceIndex, mode) {
     processModal.classList.add('hidden');
     modalOverlay.classList.add('hidden');
     
     try {
-      const mode = deviceIndex !== null && deviceIndex !== undefined ? 'mic' : 'system';
-      await invoke('start_capture', { mode, pid, deviceIndex });
+      const payload = mode ? { mode, pid, deviceIndex } : { pid, deviceIndex };
+      await invoke('start_capture', payload);
       statusIndicator.style.backgroundColor = '#4CAF50';
-      mainSuggestion.textContent = "Conectado. Escuchando...";
+      mainSuggestion.textContent = mode === 'dual' ? 'Sistema + Micrófono activado' : 'Conectado. Escuchando...';
     } catch (err) {
       console.error('JS: Capture start failed:', err);
       statusIndicator.style.backgroundColor = '#f44336';
@@ -596,5 +618,179 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // ── Audio Level Visualization ─────────────────────────────────────────
+
+  const vuFill = document.getElementById('vu-fill');
+  const waveformCanvas = document.getElementById('waveform-canvas');
+  const audioModeIndicator = document.getElementById('audio-mode-indicator');
+  const waveformCtx = waveformCanvas ? waveformCanvas.getContext('2d') : null;
+
+  // Track last waveform for smooth display (store last N waveforms)
+  let lastWaveform = null;
+
+  // Convert RMS (0.0-1.0) to approximate dBFS, clamp to -60..0 range
+  function rmsToDb(rms) {
+    if (rms <= 0.000001) return -60;
+    return Math.max(-60, Math.min(0, 20 * Math.log10(rms)));
+  }
+
+  // Map dBFS value to VU fill height percentage (0-100%)
+  function dbToPercent(db) {
+    // -60dB = 0%, 0dB = 100%
+    return ((db + 60) / 60) * 100;
+  }
+
+  // Determine VU color class based on dB level
+  function vuColorClass(db) {
+    if (db > -6) return 'red';
+    if (db > -20) return 'yellow';
+    return 'green';
+  }
+
+  // Draw the waveform on canvas
+  function drawWaveform(waveform, sampleRate) {
+    if (!waveformCtx || !waveformCanvas) return;
+    const w = waveformCanvas.width;
+    const h = waveformCanvas.height;
+    const len = waveform.length;
+
+    // Clear
+    waveformCtx.clearRect(0, 0, w, h);
+
+    if (len === 0) return;
+
+    // Background glow effect
+    waveformCtx.fillStyle = 'rgba(0, 200, 83, 0.05)';
+    waveformCtx.beginPath();
+    waveformCtx.moveTo(0, h);
+
+    const stepX = w / len;
+
+    // Draw main waveform line
+    waveformCtx.beginPath();
+    waveformCtx.moveTo(0, h / 2);
+
+    for (let i = 0; i < len; i++) {
+      const x = i * stepX;
+      const y = h / 2 - (waveform[i] * (h / 2 - 2));
+      waveformCtx.lineTo(x, y);
+    }
+    waveformCtx.strokeStyle = '#00e676';
+    waveformCtx.lineWidth = 1.5;
+    waveformCtx.shadowColor = 'rgba(0, 230, 118, 0.4)';
+    waveformCtx.shadowBlur = 4;
+    waveformCtx.stroke();
+    waveformCtx.shadowBlur = 0;
+
+    // Fill below the line with gradient
+    waveformCtx.lineTo(w, h / 2);
+    waveformCtx.closePath();
+    const grad = waveformCtx.createLinearGradient(0, 0, 0, h);
+    grad.addColorStop(0, 'rgba(0, 230, 118, 0.15)');
+    grad.addColorStop(1, 'rgba(0, 230, 118, 0.02)');
+    waveformCtx.fillStyle = grad;
+    waveformCtx.fill();
+
+    // Peak markers (red dots at peaks > threshold)
+    for (let i = 0; i < len; i++) {
+      if (waveform[i] > 0.7) {
+        const x = i * stepX;
+        const y = h / 2 - (waveform[i] * (h / 2 - 2));
+        waveformCtx.beginPath();
+        waveformCtx.arc(x, y, 2, 0, Math.PI * 2);
+        waveformCtx.fillStyle = 'rgba(255, 68, 68, 0.6)';
+        waveformCtx.fill();
+      }
+    }
+  }
+
+  // Listen for audio level updates from Rust
+  listen('audio-level-update', (event) => {
+    const data = event.payload;
+    if (!data) return;
+
+    // ── VU Meter ──
+    if (vuFill) {
+      const db = rmsToDb(data.rms);
+      const percent = dbToPercent(db);
+      vuFill.style.height = `${Math.max(2, Math.min(100, percent))}%`;
+      vuFill.className = `vu-fill ${vuColorClass(db)}`;
+    }
+
+    // ── Waveform ──
+    if (data.waveform && data.waveform.length > 0) {
+      lastWaveform = data.waveform;
+      drawWaveform(data.waveform, data.sample_rate);
+    }
+
+    // ── LED Mode Indicator ──
+    if (audioModeIndicator) {
+      if (data.mode === 'system') {
+        audioModeIndicator.className = 'audio-mode-indicator led-loopback';
+        audioModeIndicator.title = 'System Audio (WASAPI Loopback)';
+      } else if (data.mode === 'mic') {
+        audioModeIndicator.className = 'audio-mode-indicator led-mic';
+        audioModeIndicator.title = 'Microphone Mode';
+      } else if (data.mode === 'dual') {
+        audioModeIndicator.className = 'audio-mode-indicator led-dual';
+        audioModeIndicator.title = 'Dual: System + Microphone';
+      } else {
+        audioModeIndicator.className = 'audio-mode-indicator led-off';
+        audioModeIndicator.title = 'Audio capture off';
+      }
+    }
+  });
+
+  // Fallback: if no audio level events arrive, show LED as off after a timeout
+  let audioTimeout = setTimeout(() => {
+    if (audioModeIndicator) {
+      audioModeIndicator.className = 'audio-mode-indicator led-off';
+    }
+  }, 3000);
+  // Reset timeout on each audio event
+  listen('audio-level-update', () => {
+    clearTimeout(audioTimeout);
+    audioTimeout = setTimeout(() => {
+      if (audioModeIndicator) {
+        audioModeIndicator.className = 'audio-mode-indicator led-off';
+      }
+    }, 3000);
+  });
+
   init().catch(console.error);
+
+  // ─── TTS (Earbuds Mode) ──────────────────────────────────────────────────
+
+  let ttsStatusTimeout = null;
+
+  function triggerTts() {
+    const text = mainSuggestion.textContent || '';
+    if (!text || text === 'Cargando Pelendur...' || text === 'Esperando audio...' || text === 'Conectado. Escuchando...') {
+      showTtsStatus('No suggestion to read');
+      return;
+    }
+    invoke('speak_tts', { text }).catch(err => {
+      console.error('TTS error:', err);
+      showTtsStatus(`TTS error: ${err}`);
+    });
+  }
+
+  function showTtsStatus(message) {
+    const statusEl = document.getElementById('tts-status');
+    if (!statusEl) return;
+    statusEl.textContent = message;
+    statusEl.classList.remove('hidden');
+    statusEl.classList.add('tts-status-visible');
+    if (ttsStatusTimeout) clearTimeout(ttsStatusTimeout);
+    ttsStatusTimeout = setTimeout(() => {
+      statusEl.classList.remove('tts-status-visible');
+      statusEl.classList.add('hidden');
+    }, 3000);
+  }
+
+  // TTS button click
+  const ttsBtn = document.getElementById('tts-btn');
+  if (ttsBtn) {
+    ttsBtn.addEventListener('click', triggerTts);
+  }
 });

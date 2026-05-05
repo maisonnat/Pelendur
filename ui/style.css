@@ -273,6 +273,24 @@ button:hover {
   padding: 10px; border-bottom: 1px solid #333; cursor: pointer;
 }
 .process-item:hover { background: #333; }
+.process-item.dual-mode {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 6px;
+  margin-bottom: 4px;
+}
+.process-item.dual-mode:hover { background: rgba(76, 175, 80, 0.2); }
+.badge-recommended {
+  display: inline-block;
+  background: #4CAF50;
+  color: #fff;
+  font-size: 0.65rem;
+  padding: 1px 6px;
+  border-radius: 8px;
+  margin-left: 6px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
 .process-header {
   padding: 10px; background: #111; font-size: 0.8rem; color: #888;
 }
@@ -691,4 +709,136 @@ button:hover {
   border-radius: 3px;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.7);
+}
+
+/* ── Audio Visualizer: VU Meter + Waveform ──────────────────────────── */
+
+.audio-visualizer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  margin-left: 8px;
+  height: 70px;
+}
+
+/* VU Meter */
+.vu-meter {
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  height: 100%;
+}
+
+.vu-labels {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 100%;
+  padding: 2px 0;
+}
+
+.vu-label {
+  font-size: 8px;
+  font-family: 'Consolas', 'Monaco', monospace;
+  color: rgba(255, 255, 255, 0.4);
+  line-height: 1;
+}
+
+.vu-label-clip { color: rgba(255, 68, 68, 0.5); }
+.vu-label-mid  { color: rgba(255, 215, 0, 0.5); }
+.vu-label-low  { color: rgba(0, 200, 83, 0.5); }
+
+.vu-track {
+  width: 12px;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.vu-fill {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  border-radius: 0 0 3px 3px;
+  transition: height 0.08s ease-out, background 0.15s ease;
+  min-height: 2px;
+}
+
+/* VU Meter Color Zones (applied dynamically via JS) */
+.vu-fill.green  { background: linear-gradient(to top, #00c853, #69f0ae); }
+.vu-fill.yellow { background: linear-gradient(to top, #ffd600, #ffea00); }
+.vu-fill.red    { background: linear-gradient(to top, #ff1744, #ff5252); }
+
+/* Waveform Container */
+.waveform-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.waveform-canvas {
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  width: 200px;
+  height: 60px;
+}
+
+/* LED-style Audio Mode Indicator */
+.audio-mode-indicator {
+  font-size: 14px;
+  text-shadow: 0 0 6px currentColor;
+  transition: color 0.3s ease, text-shadow 0.3s ease;
+  line-height: 1;
+  cursor: help;
+}
+
+.audio-mode-indicator.led-loopback {
+  color: #00e676;
+  text-shadow: 0 0 8px rgba(0, 230, 118, 0.6);
+}
+
+.audio-mode-indicator.led-mic {
+  color: #448aff;
+  text-shadow: 0 0 8px rgba(68, 138, 255, 0.6);
+}
+
+.audio-mode-indicator.led-dual {
+  color: #ff9100;
+  text-shadow: 0 0 8px rgba(255, 145, 0, 0.6);
+}
+
+.audio-mode-indicator.led-off {
+  color: rgba(255, 255, 255, 0.15);
+  text-shadow: none;
+}
+
+/* ─── TTS (Earbuds Mode) ──────────────────────────────────────────── */
+.tts-status {
+  position: absolute;
+  top: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 200, 83, 0.9);
+  color: #fff;
+  padding: 2px 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+.tts-status.hidden {
+  opacity: 0;
+}
+
+.tts-status-visible {
+  opacity: 1;
 }

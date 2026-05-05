@@ -7,6 +7,7 @@ pub mod knowledge;
 pub mod linux_audio;
 pub mod llm;
 pub mod loopback;
+pub mod mixer;
 #[cfg(feature = "parakeet")]
 pub mod parakeet;
 pub mod stt;

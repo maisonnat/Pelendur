@@ -43,6 +43,15 @@ pub struct AppState {
 }
 
 #[derive(Serialize, Clone)]
+pub struct AudioLevelPayload {
+    pub rms: f32,
+    pub peak: f32,
+    pub waveform: Vec<f32>,
+    pub mode: String,
+    pub sample_rate: u32,
+}
+
+#[derive(Serialize, Clone)]
 pub struct AudioDevice {
     pub index: usize,
     pub name: String,

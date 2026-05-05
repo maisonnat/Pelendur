@@ -1,8 +1,51 @@
-use crate::state::{AppState, AudioDevice, StreamWrapper, TranscriptionPayload, SuggestionPayload};
-use ghostai_pilot::{audio, config, knowledge, llm, loopback, stt, vad};
+use crate::state::{AppState, AudioDevice, AudioLevelPayload, StreamWrapper, TranscriptionPayload, SuggestionPayload};
+use ghostai_pilot::{audio, config, knowledge, llm, loopback, mixer, stt, vad};
 use ghostai_pilot::llm::ChatMessage;
 use tauri::{AppHandle, Manager, State, Emitter};
 use cpal::traits::{DeviceTrait, HostTrait};
+
+// ── Audio Level Computation ──────────────────────────────────────────────
+
+/// Compute RMS and peak level from f32 audio samples.
+/// Samples are expected in [-1.0, 1.0] range.
+fn compute_audio_levels(samples: &[f32]) -> (f32, f32) {
+    if samples.is_empty() {
+        return (0.0, 0.0);
+    }
+    let mut sum_sq = 0.0f64;
+    let mut peak = 0.0f32;
+    for &s in samples {
+        let abs = s.abs();
+        if abs > peak {
+            peak = abs;
+        }
+        sum_sq += (abs as f64) * (abs as f64);
+    }
+    let rms = (sum_sq / samples.len() as f64).sqrt() as f32;
+    (rms, peak)
+}
+
+/// Downsample audio samples to `target_points` for waveform display.
+/// Uses simple linear decimation.
+fn downsample_waveform(samples: &[f32], target_points: usize) -> Vec<f32> {
+    if samples.is_empty() || target_points == 0 {
+        return Vec::new();
+    }
+    if samples.len() <= target_points {
+        return samples.to_vec();
+    }
+    let step = samples.len() / target_points;
+    let mut result = Vec::with_capacity(target_points);
+    for i in 0..target_points {
+        let idx = i * step;
+        // Take max absolute value in this window for peak waveform representation
+        let end = (idx + step).min(samples.len());
+        let window = &samples[idx..end];
+        let max_val = window.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
+        result.push(max_val);
+    }
+    result
+}
 
 #[tauri::command]
 pub fn get_audio_processes() -> Result<Vec<loopback::AudioProcess>, String> {
@@ -45,7 +88,7 @@ pub async fn start_capture(
         streams.clear();
     }
 
-    // Determine capture source: "system" = WASAPI loopback, "mic" = cpal microphone
+    // Determine capture source: "system" = WASAPI loopback, "mic" = cpal microphone, "dual" = both mixed 50/50
     let capture_mode = mode.unwrap_or_else(|| {
         // Default to system loopback on Windows, mic on Linux
         if cfg!(target_os = "windows") { "system".to_string() } else { "mic".to_string() }
@@ -55,6 +98,23 @@ pub async fn start_capture(
         // WASAPI loopback — captures all audio playing through the output device
         println!("  🔊 Starting WASAPI loopback capture (system audio)...");
         loopback::start_system_loopback_capture().map_err(|e| format!("Loopback failed: {}", e))?
+    } else if capture_mode == "dual" {
+        // Dual capture: WASAPI loopback + microphone, mixed 50/50
+        println!("  🎙️ Starting dual capture (system audio + microphone mixed 50/50)...");
+
+        let host = cpal::default_host();
+        let devices: Vec<_> = host.input_devices().map_err(|e| e.to_string())?.collect();
+        let device = if let Some(idx) = device_index {
+            devices.get(idx).ok_or_else(|| "Invalid index".to_string())?.clone()
+        } else {
+            audio::find_microphone_device().map_err(|e| e.to_string())?
+        };
+        println!("  🎤 Mic: {:?}", device.name().unwrap_or_default());
+
+        let (rx, mic_stream) = mixer::start_dual_capture(device)?;
+        let mut streams = streams_lock.lock().map_err(|e| e.to_string())?;
+        streams.push(StreamWrapper(mic_stream));
+        rx
     } else {
         // Microphone capture via cpal
         let host = cpal::default_host();
@@ -73,9 +133,14 @@ pub async fn start_capture(
 
     println!("  ✅ Audio capture active (mode: {})", capture_mode);
 
+    let capture_mode_clone = capture_mode.clone();
+
     std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
         let mut vad_detector = vad::VadDetector::default_config();
+
+        // Waveform target points for the HUD display
+        const WAVEFORM_POINTS: usize = 180;
 
         {
             let mut conversation = conversation_lock.lock().unwrap();
@@ -90,6 +155,17 @@ pub async fn start_capture(
         let mut is_capturing = false;
 
         while let Ok(chunk) = audio_rx.recv() {
+            // ── Audio level visualization ────────────────────────────────
+            let (rms, peak) = compute_audio_levels(&chunk.samples);
+            let waveform = downsample_waveform(&chunk.samples, WAVEFORM_POINTS);
+            emit_to_window(&app_handle, "audio-level-update", AudioLevelPayload {
+                rms,
+                peak,
+                waveform,
+                mode: capture_mode_clone.clone(),
+                sample_rate: chunk.sample_rate,
+            });
+
             let vad_event = vad_detector.process(&chunk.samples);
             match vad_event {
                 vad::VadEvent::SpeechStart => {
@@ -149,6 +225,8 @@ pub async fn start_capture(
                                 });
                             }
 
+                            // Clone transcription for Engram before moving it
+                            let transcription_for_engram = transcription.clone();
                             conversation.push(ChatMessage { role: "user".to_string(), content: transcription });
 
                             if let Ok(response) = rt.block_on(llm::generate_response(&config, &conversation)) {
@@ -159,15 +237,11 @@ pub async fn start_capture(
                                 // Store the turn to Engram if in interview mode
                                 if let Ok(session) = interview_session.lock() {
                                     if let Some(interview) = session.as_ref() {
-                                        let company = interview.company.clone();
-                                        // TODO: Restore Engram turn save with async context
-                                        // Currently skipped because MutexGuard can't cross .await
-                                        eprintln!("  ⚠️ Engram save deferred (async context)");
-                                        // Engram turn save handled by C4 Conversation Memory manager
-                                        // Update turn count in interview session
-                                        if let Ok(mut session2) = interview_session.lock() {
-                                            if let Some(ref mut s) = *session2 {
-                                                s.turn_count += 1;
+                                        if let Ok(memory) = memory.lock() {
+                                            if let Err(e) = rt.block_on(memory.save_turn(&transcription_for_engram, &response)) {
+                                                eprintln!("  ⚠️ Engram turn save failed: {}", e);
+                                            } else {
+                                                println!("  🧠 Turn saved to Engram memory");
                                             }
                                         }
                                     }
