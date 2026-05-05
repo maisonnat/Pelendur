@@ -20,8 +20,7 @@ fn make_wasapi_chunk(freq_hz: f32, amplitude: f32, sample_rate: u32) -> AudioChu
     let num_samples = sample_rate as usize; // ~1 second
     let samples: Vec<f32> = (0..num_samples)
         .map(|i| {
-            amplitude
-                * (2.0 * std::f32::consts::PI * freq_hz * i as f32 / sample_rate as f32).sin()
+            amplitude * (2.0 * std::f32::consts::PI * freq_hz * i as f32 / sample_rate as f32).sin()
         })
         .collect();
     AudioChunk {
@@ -250,8 +249,7 @@ fn test_resample_48k_to_16k_from_wasapi() {
         "1 second at 48kHz = 48000 samples"
     );
 
-    let rms: f32 =
-        chunk.samples.iter().map(|s| s * s).sum::<f32>() / chunk.samples.len() as f32;
+    let rms: f32 = chunk.samples.iter().map(|s| s * s).sum::<f32>() / chunk.samples.len() as f32;
     let rms_db = 20.0 * rms.max(1e-10).log10();
     assert!(
         rms_db > -20.0,
@@ -340,13 +338,9 @@ fn test_wasapi_chunk_channel_safety() {
         .map(|i| {
             let frame = i / 2;
             if i % 2 == 0 {
-                0.3
-                    * (2.0 * std::f32::consts::PI * 440.0 * frame as f32 / sample_rate as f32)
-                        .sin()
+                0.3 * (2.0 * std::f32::consts::PI * 440.0 * frame as f32 / sample_rate as f32).sin()
             } else {
-                0.3
-                    * (2.0 * std::f32::consts::PI * 660.0 * frame as f32 / sample_rate as f32)
-                        .sin()
+                0.3 * (2.0 * std::f32::consts::PI * 660.0 * frame as f32 / sample_rate as f32).sin()
             }
         })
         .collect();

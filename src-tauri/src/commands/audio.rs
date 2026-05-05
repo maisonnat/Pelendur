@@ -163,6 +163,13 @@ pub async fn start_capture(
                                         // TODO: Restore Engram turn save with async context
                                         // Currently skipped because MutexGuard can't cross .await
                                         eprintln!("  ⚠️ Engram save deferred (async context)");
+                                        // Engram turn save handled by C4 Conversation Memory manager
+                                        // Update turn count in interview session
+                                        if let Ok(mut session2) = interview_session.lock() {
+                                            if let Some(ref mut s) = *session2 {
+                                                s.turn_count += 1;
+                                            }
+                                        }
                                     }
                                 }
                             }

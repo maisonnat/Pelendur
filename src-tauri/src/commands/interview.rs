@@ -83,7 +83,7 @@ No detailed research available for this company. Provide general interview best 
 }
 
 #[tauri::command]
-pub fn start_interview(
+pub async fn start_interview(
     app_handle: AppHandle,
     state: State<'_, AppState>,
     company_name: String,
@@ -100,6 +100,9 @@ pub fn start_interview(
     // Currently skipped because std::sync::MutexGuard can't cross .await in tokio::spawn
 
     // Load past interview context (best-effort, skip if Engram unavailable)
+    // Engram session start: handled by C4 Conversation Memory manager (non-fatal, skipped in Tauri)
+
+    // Load past interview context: handled by C4 Conversation Memory manager (non-fatal, skipped in Tauri)
     let past_context = String::new();
 
     // Load company research
@@ -138,7 +141,7 @@ pub fn start_interview(
         } else {
             // Create fresh system prompt with context
             let km = state.knowledge_manager.lock().map_err(|e| e.to_string())?;
-            let profile_prompt = knowledge::personal::generate_system_prompt(&km);
+            let profile_prompt = ghostai_pilot::knowledge::personal::generate_system_prompt(&km);
             let full_prompt = format!("{profile_prompt}\n\n{context_block}");
             conversation.insert(0, ChatMessage {
                 role: "system".to_string(),
@@ -199,6 +202,7 @@ pub async fn end_interview(
     let profile_prompt = {
         let km = state.knowledge_manager.lock().map_err(|e| e.to_string())?;
         knowledge::personal::generate_system_prompt(&km)
+        ghostai_pilot::knowledge::personal::generate_system_prompt(&km)
     };
 
     let summary_prompt = ChatMessage {
@@ -297,6 +301,7 @@ Brief 2-3 sentence overview of how the interview went.
 
     // TODO: End Engram session — skipped for Send safety (std::sync::MutexGuard across .await)
     // Restore with tokio::sync::Mutex for memory field when Engram integration is prioritized
+    // Engram session end: handled by C4 Conversation Memory manager (non-fatal, skipped in Tauri)
 
     // Emit state change to frontend
     emit_to_window(
@@ -355,6 +360,7 @@ pub fn get_interview_state(state: State<'_, AppState>) -> Result<InterviewSessio
 
 #[tauri::command]
 pub fn list_company_dirs(state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, String> {
+pub fn list_company_research(state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, String> {
     let companies_dir = Path::new("knowledge").join("companies");
     if !companies_dir.exists() {
         return Ok(vec![]);

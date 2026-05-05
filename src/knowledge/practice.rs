@@ -58,25 +58,37 @@ Return a JSON array with this structure (3 questions):
 Return ONLY valid JSON array, no markdown fencing."#,
             mode_desc,
             if let Some(c) = company_name {
-                format!("COMPANY FOCUS: Focus questions on {} company culture and values.", c)
+                format!(
+                    "COMPANY FOCUS: Focus questions on {} company culture and values.",
+                    c
+                )
             } else {
                 String::new()
             }
         );
 
-        let messages = vec![ChatMessage { role: "user".into(), content: prompt }];
+        let messages = vec![ChatMessage {
+            role: "user".into(),
+            content: prompt,
+        }];
         let response = crate::llm::generate_response_with_options(config, &messages, 800)
             .await
             .map_err(|e| format!("LLM failed: {}", e))?;
 
-        let cleaned = response.trim()
+        let cleaned = response
+            .trim()
             .trim_start_matches("```json")
             .trim_start_matches("```")
             .trim_end_matches("```")
             .trim();
 
-        let questions: Vec<PracticeQuestion> = serde_json::from_str(cleaned)
-            .map_err(|e| format!("Failed to parse questions: {} — {}", e, &cleaned[..cleaned.len().min(200)]))?;
+        let questions: Vec<PracticeQuestion> = serde_json::from_str(cleaned).map_err(|e| {
+            format!(
+                "Failed to parse questions: {} — {}",
+                e,
+                &cleaned[..cleaned.len().min(200)]
+            )
+        })?;
         Ok(questions)
     }
 
@@ -109,19 +121,28 @@ Return JSON:
 Return ONLY valid JSON, no markdown fencing."#
         );
 
-        let messages = vec![ChatMessage { role: "user".into(), content: prompt }];
+        let messages = vec![ChatMessage {
+            role: "user".into(),
+            content: prompt,
+        }];
         let response = crate::llm::generate_response_with_options(config, &messages, 1000)
             .await
             .map_err(|e| format!("LLM failed: {}", e))?;
 
-        let cleaned = response.trim()
+        let cleaned = response
+            .trim()
             .trim_start_matches("```json")
             .trim_start_matches("```")
             .trim_end_matches("```")
             .trim();
 
-        let feedback: AnswerFeedback = serde_json::from_str(cleaned)
-            .map_err(|e| format!("Failed to parse feedback: {} — {}", e, &cleaned[..cleaned.len().min(200)]))?;
+        let feedback: AnswerFeedback = serde_json::from_str(cleaned).map_err(|e| {
+            format!(
+                "Failed to parse feedback: {} — {}",
+                e,
+                &cleaned[..cleaned.len().min(200)]
+            )
+        })?;
         Ok(feedback)
     }
 }

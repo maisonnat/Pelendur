@@ -24,15 +24,15 @@ pub fn pcm_to_wav(samples: &[f32], sample_rate: u32) -> Result<Vec<u8>> {
 
     let mut cursor = Cursor::new(Vec::new());
     {
-        let mut writer = hound::WavWriter::new(&mut cursor, spec)
-            .context("Failed to create WAV writer")?;
+        let mut writer =
+            hound::WavWriter::new(&mut cursor, spec).context("Failed to create WAV writer")?;
         for &sample in samples {
             let sample_i16 = (sample.clamp(-1.0, 1.0) * i16::MAX as f32) as i16;
-            writer.write_sample(sample_i16)
+            writer
+                .write_sample(sample_i16)
                 .context("Failed to write WAV sample")?;
         }
-        writer.finalize()
-            .context("Failed to finalize WAV")?;
+        writer.finalize().context("Failed to finalize WAV")?;
     }
 
     Ok(cursor.into_inner())
@@ -61,12 +61,17 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
 
     // Write audio to temp file
     let temp_dir = std::env::temp_dir();
-    let temp_wav_name = format!("pelendur_audio_{}.wav", std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0));
+    let temp_wav_name = format!(
+        "pelendur_audio_{}.wav",
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    );
     let temp_wav = temp_dir.join(&temp_wav_name);
-    tokio::fs::write(&temp_wav, audio_wav).await.context("Failed to write temp WAV file")?;
+    tokio::fs::write(&temp_wav, audio_wav)
+        .await
+        .context("Failed to write temp WAV file")?;
 
     // Validate model path exists
     let model_path = &config.whisper_model_path;
@@ -81,29 +86,37 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
     }
 
     // Build whisper-cli command
-    let threads = num_cpus().min(4); 
+    let threads = num_cpus().min(4);
 
-    let temp_wav_str = temp_wav.to_str()
+    let temp_wav_str = temp_wav
+        .to_str()
         .context("Temp WAV path contains non-UTF8 characters")?;
 
     let output = Command::new(&whisper_bin)
         .args([
-            "-m", model_path,
-            "-f", temp_wav_str,
-            "-l", &config.whisper_language,
+            "-m",
+            model_path,
+            "-f",
+            temp_wav_str,
+            "-l",
+            &config.whisper_language,
             "--no-timestamps",
-            "-t", &threads.to_string(),
+            "-t",
+            &threads.to_string(),
             "--output-txt",
-            "--output-file", temp_wav_str,
+            "--output-file",
+            temp_wav_str,
         ])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .with_context(|| format!(
-            "Failed to spawn whisper-cli at: {}\n\
+        .with_context(|| {
+            format!(
+                "Failed to spawn whisper-cli at: {}\n\
              Make sure whisper.cpp is compiled and whisper-cli is in your PATH.",
-            whisper_bin.display()
-        ))?
+                whisper_bin.display()
+            )
+        })?
         .wait_with_output()
         .await?;
 
@@ -175,17 +188,23 @@ fn find_whisper_binary() -> Result<std::path::PathBuf> {
             "whisper-cli.exe".to_string(),
             "whisper-cli.exe".to_string(),
             // Relative to common install locations
-            format!("{}\\whisper.cpp\\build\\bin\\Release\\whisper-cli.exe",
-                    std::env::var("USERPROFILE").unwrap_or_default()),
-            format!("{}\\whisper.cpp\\build\\bin\\whisper-cli.exe",
-                    std::env::var("USERPROFILE").unwrap_or_default()),
+            format!(
+                "{}\\whisper.cpp\\build\\bin\\Release\\whisper-cli.exe",
+                std::env::var("USERPROFILE").unwrap_or_default()
+            ),
+            format!(
+                "{}\\whisper.cpp\\build\\bin\\whisper-cli.exe",
+                std::env::var("USERPROFILE").unwrap_or_default()
+            ),
         ]
     } else {
         vec![
             "whisper-cli".to_string(),
             "/usr/local/bin/whisper-cli".to_string(),
-            format!("{}/whisper.cpp/build/bin/whisper-cli",
-                    std::env::var("HOME").unwrap_or_default()),
+            format!(
+                "{}/whisper.cpp/build/bin/whisper-cli",
+                std::env::var("HOME").unwrap_or_default()
+            ),
         ]
     };
 
@@ -197,8 +216,15 @@ fn find_whisper_binary() -> Result<std::path::PathBuf> {
     }
 
     // Try `which whisper-cli` / `where whisper-cli`
-    let which_cmd = if cfg!(target_os = "windows") { "where" } else { "which" };
-    if let Ok(output) = std::process::Command::new(which_cmd).arg("whisper-cli").output() {
+    let which_cmd = if cfg!(target_os = "windows") {
+        "where"
+    } else {
+        "which"
+    };
+    if let Ok(output) = std::process::Command::new(which_cmd)
+        .arg("whisper-cli")
+        .output()
+    {
         let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
         if !path_str.is_empty() {
             let path = std::path::PathBuf::from(&path_str);
@@ -245,13 +271,18 @@ async fn transcribe_local(_config: &Config, _audio_wav: &[u8]) -> Result<String>
 #[cfg(feature = "parakeet")]
 pub fn transcribe_parakeet_sync(model: &mut ParakeetModel, samples: Vec<f32>) -> Result<String> {
     let start = std::time::Instant::now();
-    let result = model.transcribe_samples(samples)
+    let result = model
+        .transcribe_samples(samples)
         .map_err(|e| anyhow::anyhow!("Parakeet inference failed: {}", e))?;
     let elapsed = start.elapsed();
     if result.text.trim().is_empty() {
         tracing::debug!("Parakeet returned empty ({}ms)", elapsed.as_millis());
     } else {
-        tracing::debug!("Parakeet: {} ({}ms)", result.text.trim(), elapsed.as_millis());
+        tracing::debug!(
+            "Parakeet: {} ({}ms)",
+            result.text.trim(),
+            elapsed.as_millis()
+        );
     }
     Ok(result.text.trim().to_string())
 }
@@ -309,7 +340,10 @@ async fn transcribe_groq(config: &Config, audio_wav: &[u8]) -> Result<String> {
 // ============================================================
 
 async fn transcribe_zai(config: &Config, audio_wav: &[u8]) -> Result<String> {
-    let url = format!("{}/audio/transcriptions", config.openai_base_url.trim_end_matches('/'));
+    let url = format!(
+        "{}/audio/transcriptions",
+        config.openai_base_url.trim_end_matches('/')
+    );
 
     let part = reqwest::multipart::Part::bytes(audio_wav.to_vec())
         .file_name("audio.wav")

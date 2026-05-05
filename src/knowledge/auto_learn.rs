@@ -303,9 +303,9 @@ Rules:
             }
 
             let suggestion_type = SuggestionType::from_str(&raw.suggestion_type);
-            let source_excerpt = raw.source_excerpt.unwrap_or_else(|| {
-                extract_relevant_excerpt(transcript, &raw.description)
-            });
+            let source_excerpt = raw
+                .source_excerpt
+                .unwrap_or_else(|| extract_relevant_excerpt(transcript, &raw.description));
 
             suggestions.push(LearningSuggestion {
                 id: Uuid::new_v4().to_string(),
@@ -337,7 +337,8 @@ Rules:
         }
 
         if let Ok(s) = serde_json::from_str::<SummaryOnly>(cleaned) {
-            Ok(s.summary.unwrap_or_else(|| "Meeting analyzed successfully".to_string()))
+            Ok(s.summary
+                .unwrap_or_else(|| "Meeting analyzed successfully".to_string()))
         } else {
             Ok("Meeting analyzed - review suggestions below".to_string())
         }
@@ -431,7 +432,9 @@ Rules:
                     id: Uuid::new_v4().to_string(),
                     suggestion_type: SuggestionType::ImprovementArea,
                     title: "Add quantifiable metrics".to_string(),
-                    description: "Consider adding specific numbers or percentages to strengthen your answer".to_string(),
+                    description:
+                        "Consider adding specific numbers or percentages to strengthen your answer"
+                            .to_string(),
                     confidence: 0.5,
                     source_excerpt: extract_relevant_excerpt(transcript, vague),
                     suggested_data: serde_json::json!({
@@ -488,7 +491,10 @@ Rules:
                     id: Uuid::new_v4().to_string(),
                     suggestion_type: SuggestionType::StrongAnswer,
                     title: format!("Strong answer component: {}", strength),
-                    description: format!("Your response demonstrates {}. This is effective!", strength.to_lowercase()),
+                    description: format!(
+                        "Your response demonstrates {}. This is effective!",
+                        strength.to_lowercase()
+                    ),
                     confidence: 0.8,
                     source_excerpt: extract_relevant_excerpt(transcript, pattern),
                     suggested_data: serde_json::json!({
@@ -528,19 +534,94 @@ fn extract_relevant_excerpt(transcript: &str, keyword: &str) -> String {
 
 fn extract_tech_keywords(transcript: &str) -> Vec<(String, String)> {
     let known_techs = [
-        "Rust", "Go", "Python", "JavaScript", "TypeScript", "Java", "C++", "C#", "Ruby",
-        "PHP", "Swift", "Kotlin", "Scala", "R", "MATLAB", "SQL", "Bash", "Shell",
-        "React", "Vue", "Angular", "Next.js", "Node.js", "Django", "Flask", "Rails",
-        "Spring", "Express", "FastAPI", "Svelte", "Remix",
-        "PostgreSQL", "MySQL", "MongoDB", "Redis", "Elasticsearch", "Cassandra", "DynamoDB",
-        "SQLite", "Oracle", "SQL Server", "Neo4j",
-        "AWS", "Azure", "GCP", "Kubernetes", "Docker", "Terraform", "Ansible", "Jenkins",
-        "GitHub Actions", "GitLab CI", "CircleCI", "Prometheus", "Grafana",
-        "microservices", "monolith", "REST", "GraphQL", "gRPC", "TCP", "UDP", "HTTP",
-        "CI/CD", "DevOps", "Agile", "Scrum", "Kanban", "TDD", "BDD",
-        "machine learning", "deep learning", "neural network", "NLP", "CV", "computer vision",
-        "tensorflow", "pytorch", "scikit-learn", "pandas", "numpy",
-        "Git", "Linux", "Unix", "Windows Server", "Nginx", "Apache", "Kafka",
+        "Rust",
+        "Go",
+        "Python",
+        "JavaScript",
+        "TypeScript",
+        "Java",
+        "C++",
+        "C#",
+        "Ruby",
+        "PHP",
+        "Swift",
+        "Kotlin",
+        "Scala",
+        "R",
+        "MATLAB",
+        "SQL",
+        "Bash",
+        "Shell",
+        "React",
+        "Vue",
+        "Angular",
+        "Next.js",
+        "Node.js",
+        "Django",
+        "Flask",
+        "Rails",
+        "Spring",
+        "Express",
+        "FastAPI",
+        "Svelte",
+        "Remix",
+        "PostgreSQL",
+        "MySQL",
+        "MongoDB",
+        "Redis",
+        "Elasticsearch",
+        "Cassandra",
+        "DynamoDB",
+        "SQLite",
+        "Oracle",
+        "SQL Server",
+        "Neo4j",
+        "AWS",
+        "Azure",
+        "GCP",
+        "Kubernetes",
+        "Docker",
+        "Terraform",
+        "Ansible",
+        "Jenkins",
+        "GitHub Actions",
+        "GitLab CI",
+        "CircleCI",
+        "Prometheus",
+        "Grafana",
+        "microservices",
+        "monolith",
+        "REST",
+        "GraphQL",
+        "gRPC",
+        "TCP",
+        "UDP",
+        "HTTP",
+        "CI/CD",
+        "DevOps",
+        "Agile",
+        "Scrum",
+        "Kanban",
+        "TDD",
+        "BDD",
+        "machine learning",
+        "deep learning",
+        "neural network",
+        "NLP",
+        "CV",
+        "computer vision",
+        "tensorflow",
+        "pytorch",
+        "scikit-learn",
+        "pandas",
+        "numpy",
+        "Git",
+        "Linux",
+        "Unix",
+        "Windows Server",
+        "Nginx",
+        "Apache",
+        "Kafka",
     ];
 
     let transcript_lower = transcript.to_lowercase();
@@ -570,17 +651,36 @@ mod tests {
 
     #[test]
     fn test_suggestion_type_from_str() {
-        assert_eq!(SuggestionType::from_str("skill"), SuggestionType::SkillMentioned);
-        assert_eq!(SuggestionType::from_str("star_story"), SuggestionType::PotentialStarStory);
-        assert_eq!(SuggestionType::from_str("STAR"), SuggestionType::PotentialStarStory);
-        assert_eq!(SuggestionType::from_str("improvement"), SuggestionType::ImprovementArea);
-        assert_eq!(SuggestionType::from_str("strong_answer"), SuggestionType::StrongAnswer);
-        assert_eq!(SuggestionType::from_str("strong"), SuggestionType::StrongAnswer);
+        assert_eq!(
+            SuggestionType::from_str("skill"),
+            SuggestionType::SkillMentioned
+        );
+        assert_eq!(
+            SuggestionType::from_str("star_story"),
+            SuggestionType::PotentialStarStory
+        );
+        assert_eq!(
+            SuggestionType::from_str("STAR"),
+            SuggestionType::PotentialStarStory
+        );
+        assert_eq!(
+            SuggestionType::from_str("improvement"),
+            SuggestionType::ImprovementArea
+        );
+        assert_eq!(
+            SuggestionType::from_str("strong_answer"),
+            SuggestionType::StrongAnswer
+        );
+        assert_eq!(
+            SuggestionType::from_str("strong"),
+            SuggestionType::StrongAnswer
+        );
     }
 
     #[test]
     fn test_extract_tech_keywords() {
-        let transcript = "I've been working with Kubernetes and Go for 3 years, using Docker for deployments.";
+        let transcript =
+            "I've been working with Kubernetes and Go for 3 years, using Docker for deployments.";
         let keywords = extract_tech_keywords(transcript);
 
         assert!(keywords.iter().any(|(k, _)| k == "Kubernetes"));
@@ -599,7 +699,8 @@ mod tests {
 
     #[test]
     fn test_extract_relevant_excerpt() {
-        let transcript = "So the situation was that I was working on a critical bug. I had to fix it quickly.";
+        let transcript =
+            "So the situation was that I was working on a critical bug. I had to fix it quickly.";
         let excerpt = extract_relevant_excerpt(transcript, "bug");
         assert!(excerpt.contains("bug"));
     }

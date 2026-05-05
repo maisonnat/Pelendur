@@ -159,6 +159,16 @@ pub fn research_company(
             let researcher = ghostai_pilot::knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
             researcher.research_company(&company_name, None).await
         })
+    // Get graph provider
+    {
+        let _gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    }
+    // gp_lock dropped here before async
+
+    // Create researcher and run
+    let researcher = ghostai_pilot::knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
+    let status = researcher.research_company(&company_name, None)
+        .await
         .map_err(|e| format!("Company research failed: {}", e))?;
 
     Ok(ResearchStatusIpc {
@@ -173,6 +183,9 @@ pub fn research_company(
 /// List companies that need research (stubs with no real data).
 #[tauri::command]
 pub async fn list_unresearched_companies(state: State<'_, AppState>) -> Result<Vec<String>, String> {
+    {
+        let _gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    }
     let researcher = ghostai_pilot::knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
     researcher.list_unresearched_companies()
         .await
@@ -191,6 +204,14 @@ pub fn research_all_companies(state: State<'_, AppState>) -> Result<Vec<Research
             let researcher = ghostai_pilot::knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
             researcher.research_all_missing(None).await
         })
+pub async fn research_all_companies(state: State<'_, AppState>) -> Result<Vec<ResearchStatusIpc>, String> {
+    {
+        let _gp_lock = state.graph_provider.lock().map_err(|e| e.to_string())?;
+    }
+
+    let researcher = ghostai_pilot::knowledge::company_research::CompanyResearcher::default_with_path("knowledge");
+    let results = researcher.research_all_missing(None)
+        .await
         .map_err(|e| format!("Batch research failed: {}", e))?;
 
     Ok(results.into_iter().map(|s| ResearchStatusIpc {

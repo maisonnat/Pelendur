@@ -189,10 +189,7 @@ use super::graph::{EntityType, KnowledgeGraph};
 /// Insert parsed CV data into the knowledge graph with deduplication.
 ///
 /// Returns a summary of what was created versus merged.
-pub fn import_parsed_cv(
-    graph: &KnowledgeGraph,
-    parsed: &ParsedCv,
-) -> Result<CvImportResult> {
+pub fn import_parsed_cv(graph: &KnowledgeGraph, parsed: &ParsedCv) -> Result<CvImportResult> {
     let mut result = CvImportResult {
         skills_created: 0,
         skills_merged: 0,
@@ -348,7 +345,8 @@ mod tests {
 
     #[test]
     fn test_strips_markdown_fences() {
-        let raw = "```json\n{\"skills\":[],\"experiences\":[],\"projects\":[],\"education\":[]}\n```";
+        let raw =
+            "```json\n{\"skills\":[],\"experiences\":[],\"projects\":[],\"education\":[]}\n```";
         let stripped = raw
             .trim()
             .trim_start_matches("```json")

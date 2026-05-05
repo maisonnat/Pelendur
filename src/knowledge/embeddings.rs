@@ -105,7 +105,14 @@ impl VectorStore {
         }
     }
 
-    pub fn add_entity(&mut self, entity_type: String, entity_id: String, name: String, snippet: String, text: &str) {
+    pub fn add_entity(
+        &mut self,
+        entity_type: String,
+        entity_id: String,
+        name: String,
+        snippet: String,
+        text: &str,
+    ) {
         let vector = self.embedding_service.embed(text);
         self.embeddings.push(StoredEmbedding {
             entity_type,
@@ -123,7 +130,9 @@ impl VectorStore {
             .embeddings
             .iter()
             .map(|e| {
-                let sim = self.embedding_service.cosine_similarity(&query_vector, &e.vector);
+                let sim = self
+                    .embedding_service
+                    .cosine_similarity(&query_vector, &e.vector);
                 SemanticSearchResult {
                     entity_type: e.entity_type.clone(),
                     entity_id: e.entity_id.clone(),
@@ -155,12 +164,18 @@ impl VectorStore {
         self.embedding_service.embed(text)
     }
 
-    pub fn search_with_vector(&self, query_vector: &[f32], top_k: usize) -> Vec<SemanticSearchResult> {
+    pub fn search_with_vector(
+        &self,
+        query_vector: &[f32],
+        top_k: usize,
+    ) -> Vec<SemanticSearchResult> {
         let mut results: Vec<SemanticSearchResult> = self
             .embeddings
             .iter()
             .map(|e| {
-                let sim = self.embedding_service.cosine_similarity(query_vector, &e.vector);
+                let sim = self
+                    .embedding_service
+                    .cosine_similarity(query_vector, &e.vector);
                 SemanticSearchResult {
                     entity_type: e.entity_type.clone(),
                     entity_id: e.entity_id.clone(),
@@ -223,10 +238,7 @@ impl<'a> PersistentVectorStore<'a> {
         vector: &[f32],
     ) -> rusqlite::Result<()> {
         let now = chrono::Utc::now().to_rfc3339();
-        let vector_bytes: Vec<u8> = vector
-            .iter()
-            .flat_map(|v| v.to_le_bytes())
-            .collect();
+        let vector_bytes: Vec<u8> = vector.iter().flat_map(|v| v.to_le_bytes()).collect();
 
         self.conn.execute(
             "INSERT INTO entity_embeddings (entity_type, entity_id, name, snippet, vector, updated_at)
@@ -259,13 +271,21 @@ impl<'a> PersistentVectorStore<'a> {
                 .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
                 .collect();
 
-            Ok((entity_type, entity_id, name, snippet.unwrap_or_default(), vector))
+            Ok((
+                entity_type,
+                entity_id,
+                name,
+                snippet.unwrap_or_default(),
+                vector,
+            ))
         })?;
 
         let mut results: Vec<SemanticSearchResult> = rows
             .filter_map(|r| r.ok())
             .map(|(entity_type, entity_id, name, snippet, vector)| {
-                let sim = self.embedding_service.cosine_similarity(&query_vector, &vector);
+                let sim = self
+                    .embedding_service
+                    .cosine_similarity(&query_vector, &vector);
                 SemanticSearchResult {
                     entity_type,
                     entity_id,
@@ -281,7 +301,11 @@ impl<'a> PersistentVectorStore<'a> {
         Ok(results)
     }
 
-    pub fn get_embedding(&self, entity_type: &str, entity_id: &str) -> rusqlite::Result<Option<Vec<f32>>> {
+    pub fn get_embedding(
+        &self,
+        entity_type: &str,
+        entity_id: &str,
+    ) -> rusqlite::Result<Option<Vec<f32>>> {
         let mut stmt = self.conn.prepare(
             "SELECT vector FROM entity_embeddings WHERE entity_type = ?1 AND entity_id = ?2",
         )?;
@@ -309,11 +333,11 @@ impl<'a> PersistentVectorStore<'a> {
     }
 
     pub fn count(&self) -> rusqlite::Result<usize> {
-        let count: i64 = self.conn.query_row(
-            "SELECT COUNT(*) FROM entity_embeddings",
-            [],
-            |row| row.get(0),
-        )?;
+        let count: i64 =
+            self.conn
+                .query_row("SELECT COUNT(*) FROM entity_embeddings", [], |row| {
+                    row.get(0)
+                })?;
         Ok(count as usize)
     }
 
@@ -339,8 +363,18 @@ impl<'a> PersistentVectorStore<'a> {
 
         for row in rows {
             let (id, name, category, level) = row?;
-            let text = format!("{} {} {}", name, category.as_deref().unwrap_or_default(), level);
-            let snippet = format!("{} ({}) - {}", name, level, category.as_deref().unwrap_or_default());
+            let text = format!(
+                "{} {} {}",
+                name,
+                category.as_deref().unwrap_or_default(),
+                level
+            );
+            let snippet = format!(
+                "{} ({}) - {}",
+                name,
+                level,
+                category.as_deref().unwrap_or_default()
+            );
             let vector = self.embedding_service.embed(&text);
             self.upsert_embedding("skill", &id, &name, &snippet, &vector)?;
         }
@@ -360,8 +394,18 @@ impl<'a> PersistentVectorStore<'a> {
 
         for row in rows {
             let (id, company, role, description) = row?;
-            let text = format!("{} {} {}", company, role, description.as_deref().unwrap_or_default());
-            let snippet = format!("{} at {} - {}", role, company, description.as_deref().unwrap_or_default());
+            let text = format!(
+                "{} {} {}",
+                company,
+                role,
+                description.as_deref().unwrap_or_default()
+            );
+            let snippet = format!(
+                "{} at {} - {}",
+                role,
+                company,
+                description.as_deref().unwrap_or_default()
+            );
             let vector = self.embedding_service.embed(&text);
             self.upsert_embedding("experience", &id, &role, &snippet, &vector)?;
         }
@@ -381,7 +425,12 @@ impl<'a> PersistentVectorStore<'a> {
 
         for row in rows {
             let (id, name, description, keywords) = row?;
-            let text = format!("{} {} {}", name, description.as_deref().unwrap_or_default(), keywords.as_deref().unwrap_or_default());
+            let text = format!(
+                "{} {} {}",
+                name,
+                description.as_deref().unwrap_or_default(),
+                keywords.as_deref().unwrap_or_default()
+            );
             let snippet = format!("{} - {}", name, description.as_deref().unwrap_or_default());
             let vector = self.embedding_service.embed(&text);
             self.upsert_embedding("project", &id, &name, &snippet, &vector)?;
@@ -390,7 +439,8 @@ impl<'a> PersistentVectorStore<'a> {
     }
 
     fn generate_company_embeddings(&self, conn: &Connection) -> rusqlite::Result<()> {
-        let mut stmt = conn.prepare("SELECT id, name, industry, description, tech_stack FROM companies")?;
+        let mut stmt =
+            conn.prepare("SELECT id, name, industry, description, tech_stack FROM companies")?;
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -403,7 +453,13 @@ impl<'a> PersistentVectorStore<'a> {
 
         for row in rows {
             let (id, name, industry, description, tech_stack) = row?;
-            let text = format!("{} {} {} {}", name, industry.as_deref().unwrap_or_default(), description.as_deref().unwrap_or_default(), tech_stack.as_deref().unwrap_or_default());
+            let text = format!(
+                "{} {} {} {}",
+                name,
+                industry.as_deref().unwrap_or_default(),
+                description.as_deref().unwrap_or_default(),
+                tech_stack.as_deref().unwrap_or_default()
+            );
             let snippet = format!("{} - {}", name, description.as_deref().unwrap_or_default());
             let vector = self.embedding_service.embed(&text);
             self.upsert_embedding("company", &id, &name, &snippet, &vector)?;
@@ -412,7 +468,8 @@ impl<'a> PersistentVectorStore<'a> {
     }
 
     pub fn generate_story_embeddings(&self, conn: &Connection) -> rusqlite::Result<()> {
-        let mut stmt = conn.prepare("SELECT id, title, situation, task, action, result FROM star_stories")?;
+        let mut stmt =
+            conn.prepare("SELECT id, title, situation, task, action, result FROM star_stories")?;
         let rows = stmt.query_map([], |row| {
             Ok((
                 row.get::<_, String>(0)?,
@@ -427,7 +484,14 @@ impl<'a> PersistentVectorStore<'a> {
         for row in rows {
             let (id, title, situation, task, action, result) = row?;
             let display_name = title.clone().unwrap_or_else(|| situation.clone());
-            let text = format!("{} {} {} {} {}", title.unwrap_or_default(), situation, task, action, result);
+            let text = format!(
+                "{} {} {} {} {}",
+                title.unwrap_or_default(),
+                situation,
+                task,
+                action,
+                result
+            );
             let vector = self.embedding_service.embed(&text);
             self.upsert_embedding("star_story", &id, &display_name, &situation, &vector)?;
         }
@@ -456,7 +520,10 @@ impl EmbeddingEngine {
         }
     }
 
-    pub async fn embed(&self, texts: Vec<String>) -> Result<Vec<Vec<f64>>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn embed(
+        &self,
+        texts: Vec<String>,
+    ) -> Result<Vec<Vec<f64>>, Box<dyn std::error::Error + Send + Sync>> {
         if texts.is_empty() {
             return Ok(Vec::new());
         }
@@ -492,7 +559,10 @@ impl EmbeddingEngine {
         Ok(emb_response.data.into_iter().map(|d| d.embedding).collect())
     }
 
-    pub async fn embed_single(&self, text: &str) -> Result<Vec<f64>, Box<dyn std::error::Error + Send + Sync>> {
+    pub async fn embed_single(
+        &self,
+        text: &str,
+    ) -> Result<Vec<f64>, Box<dyn std::error::Error + Send + Sync>> {
         let mut results = self.embed(vec![text.to_string()]).await?;
         results.pop().ok_or_else(|| "No embedding returned".into())
     }
@@ -521,7 +591,10 @@ impl<'a> SemanticSearcher<'a> {
         embeddings: &'a HashMap<String, Vec<f64>>,
         entity_texts: &'a HashMap<String, (String, String, String)>,
     ) -> Self {
-        Self { embeddings, entity_texts }
+        Self {
+            embeddings,
+            entity_texts,
+        }
     }
 
     pub fn search(&self, query_embedding: &[f64], top_k: usize) -> Vec<SemanticSearchResult> {
@@ -573,9 +646,18 @@ mod tests {
         embeddings.insert("s3".into(), vec![0.707, 0.707, 0.0]);
 
         let mut texts = HashMap::new();
-        texts.insert("s1".into(), ("skill".into(), "Kubernetes".into(), "K8s".into()));
-        texts.insert("s2".into(), ("skill".into(), "Rust".into(), "Systems".into()));
-        texts.insert("s3".into(), ("skill".into(), "Microservices".into(), "Distributed".into()));
+        texts.insert(
+            "s1".into(),
+            ("skill".into(), "Kubernetes".into(), "K8s".into()),
+        );
+        texts.insert(
+            "s2".into(),
+            ("skill".into(), "Rust".into(), "Systems".into()),
+        );
+        texts.insert(
+            "s3".into(),
+            ("skill".into(), "Microservices".into(), "Distributed".into()),
+        );
 
         let searcher = SemanticSearcher::new(&embeddings, &texts);
         let results = searcher.search(&vec![1.0, 0.0, 0.0], 2);
@@ -587,31 +669,40 @@ mod tests {
     #[test]
     fn test_hash_embedding_service() {
         let service = HashEmbeddingService::new(128);
-        
+
         let v1 = service.embed("kubernetes container orchestration");
         let v2 = service.embed("docker containers docker-compose");
         let v3 = service.embed("python programming language");
-        
+
         assert_eq!(v1.len(), 128);
         assert_eq!(v2.len(), 128);
         assert_eq!(v3.len(), 128);
-        
+
         let mag = v1.iter().map(|x| x * x).sum::<f32>().sqrt();
         assert!((mag - 1.0).abs() < 0.0001, "Vector should be normalized");
-        
+
         let sim_same = service.cosine_similarity(&v1, &v1);
-        assert!((sim_same - 1.0).abs() < 0.0001, "Same text should have similarity 1.0");
-        
+        assert!(
+            (sim_same - 1.0).abs() < 0.0001,
+            "Same text should have similarity 1.0"
+        );
+
         let sim_related = service.cosine_similarity(&v1, &v2);
         let sim_unrelated = service.cosine_similarity(&v1, &v3);
-        assert!(sim_same > sim_related, "Same text should have highest similarity");
-        assert!(sim_same > sim_unrelated, "Same text should beat unrelated text");
+        assert!(
+            sim_same > sim_related,
+            "Same text should have highest similarity"
+        );
+        assert!(
+            sim_same > sim_unrelated,
+            "Same text should beat unrelated text"
+        );
     }
 
     #[test]
     fn test_vector_store_search() {
         let mut store = VectorStore::new();
-        
+
         store.add_entity(
             "skill".to_string(),
             "s1".to_string(),
@@ -633,7 +724,7 @@ mod tests {
             "Backend language".to_string(),
             "go golang backend server",
         );
-        
+
         let results = store.search("docker containers", 2);
         assert!(!results.is_empty());
         assert_eq!(results[0].entity_id, "s1");
@@ -644,8 +735,12 @@ mod tests {
     fn test_vector_store_normalized() {
         let service = HashEmbeddingService::new(64);
         let v = service.embed("test text with words");
-        
+
         let mag = v.iter().map(|x| x * x).sum::<f32>().sqrt();
-        assert!((mag - 1.0).abs() < 0.001, "Vector should be normalized, got mag {}", mag);
+        assert!(
+            (mag - 1.0).abs() < 0.001,
+            "Vector should be normalized, got mag {}",
+            mag
+        );
     }
 }

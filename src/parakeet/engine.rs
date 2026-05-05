@@ -52,8 +52,7 @@ impl ParakeetEngine {
             .resolve_variant("decoder_joint-model.int8.onnx", "decoder_joint-model.onnx")
             .is_none()
         {
-            self.download_file("decoder_joint-model.int8.onnx")
-                .await?;
+            self.download_file("decoder_joint-model.int8.onnx").await?;
         }
         if !self.has_nonzero_file("nemo128.onnx") {
             self.download_file("nemo128.onnx").await?;
@@ -127,10 +126,9 @@ impl ParakeetEngine {
         let dest_path = self.models_dir.join(filename);
 
         let temp_path = dest_path.with_extension("tmp");
-        let mut file =
-            tokio::fs::File::create(&temp_path)
-                .await
-                .map_err(ParakeetError::Io)?;
+        let mut file = tokio::fs::File::create(&temp_path)
+            .await
+            .map_err(ParakeetError::Io)?;
 
         let mut downloaded: u64 = 0;
         let mut stream = response.bytes_stream();
@@ -161,11 +159,7 @@ impl ParakeetEngine {
                         (downloaded as f64 / total as f64) * 100.0
                     );
                 } else {
-                    tracing::info!(
-                        "Downloading {}: {}",
-                        filename,
-                        bytes_to_human(downloaded)
-                    );
+                    tracing::info!("Downloading {}: {}", filename, bytes_to_human(downloaded));
                 }
             }
         }

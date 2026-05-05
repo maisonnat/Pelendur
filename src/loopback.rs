@@ -66,10 +66,10 @@ fn wasapi_log(msg: &str) {
 
 #[cfg(target_os = "windows")]
 fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
+    use windows::core::GUID;
+    use windows::Win32::Foundation::*;
     use windows::Win32::Media::Audio::*;
     use windows::Win32::System::Com::*;
-    use windows::Win32::Foundation::*;
-    use windows::core::GUID;
 
     // Raw FFI for functions not exposed by windows 0.58 features
     #[link(name = "kernel32")]
@@ -130,8 +130,7 @@ fn wasapi_loopback_thread(tx: mpsc::Sender<AudioChunk>) -> Result<()> {
     let pwfx: *const windows::Win32::Media::Audio::WAVEFORMATEX = mix_format;
 
     let fmt_tag = unsafe { std::ptr::addr_of!((*mix_format).wFormatTag).read_unaligned() };
-    let fmt_block_align =
-        unsafe { std::ptr::addr_of!((*mix_format).nBlockAlign).read_unaligned() };
+    let fmt_block_align = unsafe { std::ptr::addr_of!((*mix_format).nBlockAlign).read_unaligned() };
     let fmt_cb_size = unsafe { std::ptr::addr_of!((*mix_format).cbSize).read_unaligned() };
 
     wasapi_log(&format!(

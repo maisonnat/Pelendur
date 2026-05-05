@@ -7,6 +7,7 @@ pub mod graph;
 pub mod graph_search;
 pub mod migration;
 pub mod personal;
+pub mod post_interview_summary;
 pub mod practice;
 pub mod search;
 pub mod skills;

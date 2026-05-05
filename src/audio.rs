@@ -15,23 +15,35 @@ pub struct AudioChunk {
 pub mod real {
     use super::*;
     pub use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
-    pub use cpal::{SampleFormat, SampleRate, StreamConfig, Stream};
+    pub use cpal::{SampleFormat, SampleRate, Stream, StreamConfig};
 
     pub fn find_system_audio_device() -> Result<Device> {
         let host = cpal::default_host();
         #[cfg(target_os = "windows")]
-        { return find_system_audio_windows(&host); }
+        {
+            return find_system_audio_windows(&host);
+        }
         #[cfg(target_os = "linux")]
-        { return find_system_audio_linux(&host); }
+        {
+            return find_system_audio_linux(&host);
+        }
         #[cfg(target_os = "macos")]
-        { return find_system_audio_macos(&host); }
+        {
+            return find_system_audio_macos(&host);
+        }
         #[cfg(not(any(target_os = "windows", target_os = "linux", target_os = "macos")))]
-        { Err(anyhow!("System audio capture not supported on this platform")) }
+        {
+            Err(anyhow!(
+                "System audio capture not supported on this platform"
+            ))
+        }
     }
 
     #[cfg(target_os = "windows")]
     fn find_system_audio_windows(host: &cpal::Host) -> Result<Device> {
-        let devices = host.input_devices().map_err(|e| anyhow!("Failed to enumerate input devices: {}", e))?;
+        let devices = host
+            .input_devices()
+            .map_err(|e| anyhow!("Failed to enumerate input devices: {}", e))?;
         let mut all_devices = Vec::new();
         for device in devices {
             let name = device.name().unwrap_or_default();
@@ -48,33 +60,49 @@ pub mod real {
 
     #[cfg(target_os = "linux")]
     fn find_system_audio_linux(host: &cpal::Host) -> Result<Device> {
-        let devices = host.input_devices().map_err(|e| anyhow!("Failed to enumerate input devices: {}", e))?;
+        let devices = host
+            .input_devices()
+            .map_err(|e| anyhow!("Failed to enumerate input devices: {}", e))?;
         for device in devices {
             let name = device.name().unwrap_or_default();
-            if name.to_lowercase().contains("monitor") { return Ok(device); }
+            if name.to_lowercase().contains("monitor") {
+                return Ok(device);
+            }
         }
         Err(anyhow!("No system audio monitor device found"))
     }
 
     #[cfg(target_os = "macos")]
     fn find_system_audio_macos(host: &cpal::Host) -> Result<Device> {
-        let devices = host.input_devices().map_err(|e| anyhow!("Failed to enumerate input devices: {}", e))?;
+        let devices = host
+            .input_devices()
+            .map_err(|e| anyhow!("Failed to enumerate input devices: {}", e))?;
         for device in devices {
             let name = device.name().unwrap_or_default();
-            if name.to_lowercase().contains("blackhole") { return Ok(device); }
+            if name.to_lowercase().contains("blackhole") {
+                return Ok(device);
+            }
         }
-        host.default_input_device().ok_or_else(|| anyhow!("No input device found"))
+        host.default_input_device()
+            .ok_or_else(|| anyhow!("No input device found"))
     }
 
     pub fn find_microphone_device() -> Result<Device> {
         let host = cpal::default_host();
-        host.default_input_device().ok_or_else(|| anyhow!("No default input device found"))
+        host.default_input_device()
+            .ok_or_else(|| anyhow!("No default input device found"))
     }
 
     fn enumerate_input_devices() -> Result<Vec<(String, Device, bool, String)>> {
         let host = cpal::default_host();
-        let default_input_name = host.default_input_device().and_then(|d| d.name().ok()).unwrap_or_default();
-        let default_output_name = host.default_output_device().and_then(|d| d.name().ok()).unwrap_or_default();
+        let default_input_name = host
+            .default_input_device()
+            .and_then(|d| d.name().ok())
+            .unwrap_or_default();
+        let default_output_name = host
+            .default_output_device()
+            .and_then(|d| d.name().ok())
+            .unwrap_or_default();
         let mut result = Vec::new();
 
         if let Ok(output_devices) = host.output_devices() {
@@ -82,7 +110,11 @@ pub mod real {
                 let name = device.name().unwrap_or_default();
                 let lower = name.to_lowercase();
                 let is_default = name == default_output_name;
-                let label = if lower.contains("speakers") || lower.contains("altavoces") { "🔊 Loopback (speakers)" } else { "🔊 Loopback (output)" };
+                let label = if lower.contains("speakers") || lower.contains("altavoces") {
+                    "🔊 Loopback (speakers)"
+                } else {
+                    "🔊 Loopback (output)"
+                };
                 result.push((name, device, is_default, label.to_string()));
             }
         }
@@ -92,7 +124,11 @@ pub mod real {
                 let name = device.name().unwrap_or_default();
                 let lower = name.to_lowercase();
                 let is_default = name == default_input_name;
-                let label = if lower.contains("micro") || lower.contains("mic") { "🎤 Microphone" } else { "🎤 Input" };
+                let label = if lower.contains("micro") || lower.contains("mic") {
+                    "🎤 Microphone"
+                } else {
+                    "🎤 Input"
+                };
                 result.push((name, device, is_default, label.to_string()));
             }
         }
@@ -124,7 +160,10 @@ pub mod real {
         let sample_rate = config.sample_rate().0;
         let channels = config.channels();
         let sample_format = config.sample_format();
-        println!("  ✓ Formato: {}Hz, {} canales, {:?}", sample_rate, channels, sample_format);
+        println!(
+            "  ✓ Formato: {}Hz, {} canales, {:?}",
+            sample_rate, channels, sample_format
+        );
 
         let stream_config: StreamConfig = config.into();
         let (tx, rx) = mpsc::channel();
@@ -133,15 +172,35 @@ pub mod real {
         let error_callback = |err| eprintln!("  ❌ Error audio: {}", err);
 
         let stream = match sample_format {
-            SampleFormat::F32 => device.build_input_stream(&stream_config, move |data: &[f32], _| process_samples(data, channels, &mut buffer, &tx, sample_rate), error_callback, None)?,
-            SampleFormat::I16 => device.build_input_stream(&stream_config, move |data: &[i16], _| {
-                let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / 32768.0).collect();
-                process_samples(&f32_data, channels, &mut buffer, &tx, sample_rate)
-            }, error_callback, None)?,
-            SampleFormat::U16 => device.build_input_stream(&stream_config, move |data: &[u16], _| {
-                let f32_data: Vec<f32> = data.iter().map(|&s| (s as f32 - 32768.0) / 32768.0).collect();
-                process_samples(&f32_data, channels, &mut buffer, &tx, sample_rate)
-            }, error_callback, None)?,
+            SampleFormat::F32 => device.build_input_stream(
+                &stream_config,
+                move |data: &[f32], _| {
+                    process_samples(data, channels, &mut buffer, &tx, sample_rate)
+                },
+                error_callback,
+                None,
+            )?,
+            SampleFormat::I16 => device.build_input_stream(
+                &stream_config,
+                move |data: &[i16], _| {
+                    let f32_data: Vec<f32> = data.iter().map(|&s| s as f32 / 32768.0).collect();
+                    process_samples(&f32_data, channels, &mut buffer, &tx, sample_rate)
+                },
+                error_callback,
+                None,
+            )?,
+            SampleFormat::U16 => device.build_input_stream(
+                &stream_config,
+                move |data: &[u16], _| {
+                    let f32_data: Vec<f32> = data
+                        .iter()
+                        .map(|&s| (s as f32 - 32768.0) / 32768.0)
+                        .collect();
+                    process_samples(&f32_data, channels, &mut buffer, &tx, sample_rate)
+                },
+                error_callback,
+                None,
+            )?,
             _ => return Err(anyhow!("Unsupported format")),
         };
 
@@ -150,7 +209,13 @@ pub mod real {
         Ok((rx, stream))
     }
 
-    fn process_samples(data: &[f32], channels: u16, buffer: &mut Vec<f32>, tx: &mpsc::Sender<AudioChunk>, sample_rate: u32) {
+    fn process_samples(
+        data: &[f32],
+        channels: u16,
+        buffer: &mut Vec<f32>,
+        tx: &mpsc::Sender<AudioChunk>,
+        sample_rate: u32,
+    ) {
         if channels == 1 {
             buffer.extend_from_slice(data);
         } else {
@@ -161,7 +226,10 @@ pub mod real {
         let chunk_size = sample_rate as usize;
         while buffer.len() >= chunk_size {
             let chunk: Vec<f32> = buffer.drain(..chunk_size).collect();
-            let _ = tx.send(AudioChunk { samples: chunk, sample_rate });
+            let _ = tx.send(AudioChunk {
+                samples: chunk,
+                sample_rate,
+            });
         }
     }
 
@@ -172,10 +240,18 @@ pub mod real {
 mod real {
     use super::*;
     pub struct Device;
-    pub fn find_system_audio_device() -> Result<Device> { Err(anyhow!("No audio")) }
-    pub fn find_microphone_device() -> Result<Device> { Ok(Device) }
-    pub fn select_device_interactive() -> Result<Device> { Ok(Device) }
-    pub fn start_capture(_d: Device) -> Result<(mpsc::Receiver<AudioChunk>, ())> { Err(anyhow!("No audio")) }
+    pub fn find_system_audio_device() -> Result<Device> {
+        Err(anyhow!("No audio"))
+    }
+    pub fn find_microphone_device() -> Result<Device> {
+        Ok(Device)
+    }
+    pub fn select_device_interactive() -> Result<Device> {
+        Ok(Device)
+    }
+    pub fn start_capture(_d: Device) -> Result<(mpsc::Receiver<AudioChunk>, ())> {
+        Err(anyhow!("No audio"))
+    }
 }
 
 pub use real::*;

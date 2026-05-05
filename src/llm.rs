@@ -45,7 +45,10 @@ pub async fn generate_response_streaming(
     config: &Config,
     messages: &[ChatMessage],
 ) -> Result<String> {
-    let url = format!("{}/chat/completions", config.openai_base_url.trim_end_matches('/'));
+    let url = format!(
+        "{}/chat/completions",
+        config.openai_base_url.trim_end_matches('/')
+    );
 
     let request = ChatRequest {
         model: config.openai_model.clone(),
@@ -87,7 +90,11 @@ pub async fn generate_response_streaming(
             }
         };
         let text = String::from_utf8_lossy(&chunk);
-        debug!("LLM chunk ({} bytes): {}", chunk.len(), text.lines().next().unwrap_or(""));
+        debug!(
+            "LLM chunk ({} bytes): {}",
+            chunk.len(),
+            text.lines().next().unwrap_or("")
+        );
 
         // Parse SSE: "data: {json}\n\n" format
         for line in text.lines() {
@@ -141,17 +148,17 @@ pub async fn generate_response_streaming(
         println!("\x1b[90m[/thinking]\x1b[0m");
     }
 
-    debug!("LLM streaming done, response length: {}", full_response.len());
+    debug!(
+        "LLM streaming done, response length: {}",
+        full_response.len()
+    );
 
     println!(); // Newline after streaming
     Ok(full_response)
 }
 
 /// Generate a response using OpenAI-compatible API (non-streaming, simpler)
-pub async fn generate_response(
-    config: &Config,
-    messages: &[ChatMessage],
-) -> Result<String> {
+pub async fn generate_response(config: &Config, messages: &[ChatMessage]) -> Result<String> {
     generate_response_with_options(config, messages, 500).await
 }
 
@@ -162,7 +169,10 @@ pub async fn generate_response_with_options(
     messages: &[ChatMessage],
     max_tokens: u32,
 ) -> Result<String> {
-    let url = format!("{}/chat/completions", config.openai_base_url.trim_end_matches('/'));
+    let url = format!(
+        "{}/chat/completions",
+        config.openai_base_url.trim_end_matches('/')
+    );
 
     let request = ChatRequest {
         model: config.openai_model.clone(),
@@ -191,8 +201,8 @@ pub async fn generate_response_with_options(
 
     let body_text = response.text().await.unwrap_or_default();
 
-    let result: ChatResponse = serde_json::from_str(&body_text)
-        .context("Failed to parse LLM response")?;
+    let result: ChatResponse =
+        serde_json::from_str(&body_text).context("Failed to parse LLM response")?;
 
     let content = result
         .choices

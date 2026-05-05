@@ -464,7 +464,10 @@ based on the candidate's actual experience and the company's context.
             prompt.push_str("\n### EDUCATION:\n");
             for edu in &profile.educacion {
                 if let Some(period) = &edu.periodo {
-                    prompt.push_str(&format!("- {} — {} ({})\n", edu.titulo, edu.institucion, period));
+                    prompt.push_str(&format!(
+                        "- {} — {} ({})\n",
+                        edu.titulo, edu.institucion, period
+                    ));
                 } else {
                     prompt.push_str(&format!("- {} — {}\n", edu.titulo, edu.institucion));
                 }
@@ -472,7 +475,10 @@ based on the candidate's actual experience and the company's context.
         }
 
         if !profile.certificaciones.is_empty() {
-            prompt.push_str(&format!("\n### CERTIFICATIONS:\n- {}\n", profile.certificaciones.join("\n- ")));
+            prompt.push_str(&format!(
+                "\n### CERTIFICATIONS:\n- {}\n",
+                profile.certificaciones.join("\n- ")
+            ));
         }
 
         prompt.push_str("\n### TOP SKILLS:\n");
@@ -494,10 +500,7 @@ When you see a matching opportunity:
 }
 
 /// Generates system prompt with company research context for interview mode
-pub fn generate_company_interview_prompt(
-    manager: &KnowledgeManager,
-    company_name: &str,
-) -> String {
+pub fn generate_company_interview_prompt(manager: &KnowledgeManager, company_name: &str) -> String {
     let mut prompt = generate_system_prompt(manager);
 
     // Inject company research context

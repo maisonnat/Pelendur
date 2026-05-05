@@ -3,26 +3,24 @@ mod audio_config;
 mod config;
 mod conversation_memory;
 mod knowledge;
-mod llm;
-mod loopback;
 #[cfg(feature = "linux_audio")]
 mod linux_audio;
-mod stt;
-mod vad;
+mod llm;
+mod loopback;
 #[cfg(feature = "parakeet")]
 mod parakeet;
+mod stt;
+mod vad;
 
 #[cfg(feature = "parakeet")]
 mod parakeet_inference {
-    use std::sync::mpsc;
-    use tokio::sync::{oneshot, broadcast};
     use anyhow::Result;
+    use std::sync::mpsc;
+    use tokio::sync::{broadcast, oneshot};
 
     pub enum InferenceRequest {
         /// Partial inference: fire-and-forget, result sent to broadcast channel
-        Partial {
-            samples: Vec<f32>,
-        },
+        Partial { samples: Vec<f32> },
         /// Final inference: response expected via oneshot
         Final {
             samples: Vec<f32>,
@@ -33,7 +31,9 @@ mod parakeet_inference {
     pub type InferenceSender = mpsc::Sender<InferenceRequest>;
     pub type PartialReceiver = broadcast::Receiver<String>;
 
-    pub fn spawn_inference_thread(model: crate::parakeet::ParakeetModel) -> (InferenceSender, broadcast::Sender<String>) {
+    pub fn spawn_inference_thread(
+        model: crate::parakeet::ParakeetModel,
+    ) -> (InferenceSender, broadcast::Sender<String>) {
         let (tx, rx) = mpsc::channel::<InferenceRequest>();
         let (partial_tx, _) = broadcast::channel::<String>(16);
         let partial_tx_clone = partial_tx.clone();
@@ -46,13 +46,18 @@ mod parakeet_inference {
                 while let Ok(req) = rx.recv() {
                     match req {
                         InferenceRequest::Partial { samples } => {
-                            if let Ok(text) = crate::stt::transcribe_parakeet_sync(&mut model, samples) {
+                            if let Ok(text) =
+                                crate::stt::transcribe_parakeet_sync(&mut model, samples)
+                            {
                                 if !text.trim().is_empty() {
                                     let _ = partial_tx_clone.send(text);
                                 }
                             }
                         }
-                        InferenceRequest::Final { samples, response_tx } => {
+                        InferenceRequest::Final {
+                            samples,
+                            response_tx,
+                        } => {
                             let result = crate::stt::transcribe_parakeet_sync(&mut model, samples);
                             let _ = response_tx.send(result);
                         }
@@ -76,7 +81,7 @@ use config::Config;
 use knowledge::personal::KnowledgeManager;
 use llm::ChatMessage;
 use tokio::sync::mpsc;
-use tracing::{debug, info, warn, error};
+use tracing::{debug, error, info, warn};
 use tracing_subscriber::EnvFilter;
 
 /// Capture mode — either single device or dual (mic + system audio)
@@ -152,7 +157,10 @@ fn select_capture_mode() -> Result<CaptureMode> {
         #[cfg(feature = "wasapi_loopback")]
         {
             let app_process = loopback::real::select_audio_process()?;
-            println!("  ✓ Selected: {} (PID: {})", app_process.name, app_process.pid);
+            println!(
+                "  ✓ Selected: {} (PID: {})",
+                app_process.name, app_process.pid
+            );
             return Ok(CaptureMode::Dual(mic_device, Some(app_process.pid)));
         }
 
@@ -174,7 +182,7 @@ async fn main() -> Result<()> {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_env_filter(
-                    EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"))
+            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
         )
         .init();
 
@@ -183,9 +191,8 @@ async fn main() -> Result<()> {
 
     #[cfg(feature = "parakeet")]
     let (inference_tx, partial_tx) = {
-        let engine = ParakeetEngine::new(
-            std::path::PathBuf::from(&config.parakeet_model_dir)
-        ).map_err(|e| anyhow::anyhow!("Failed to create Parakeet engine: {}", e))?;
+        let engine = ParakeetEngine::new(std::path::PathBuf::from(&config.parakeet_model_dir))
+            .map_err(|e| anyhow::anyhow!("Failed to create Parakeet engine: {}", e))?;
 
         if !engine.is_model_ready() {
             tracing::warn!("Parakeet models not found. Downloading...");
@@ -227,12 +234,21 @@ async fn main() -> Result<()> {
         "pelendur",
         5, // max 5 past memories into context
     );
-    let session_title = format!("Interview Session {}", Local::now().format("%Y-%m-%d %H:%M"));
+    let session_title = format!(
+        "Interview Session {}",
+        Local::now().format("%Y-%m-%d %H:%M")
+    );
     if let Err(e) = memory.start_session(&session_title).await {
-        warn!("Failed to start Engram memory session: {} — memory disabled", e);
+        warn!(
+            "Failed to start Engram memory session: {} — memory disabled",
+            e
+        );
     } else {
         info!("Engram memory session active");
     }
+
+    // Initialize Answer Usage Tracker (F4: Post-interview Summary)
+    let mut answer_tracker = knowledge::post_interview_summary::AnswerUsageTracker::new();
 
     // Show STT provider
     let stt_label = match config.stt_provider {
@@ -240,9 +256,13 @@ async fn main() -> Result<()> {
         config::SttProvider::Zai => "z.ai GLM-ASR-2512".to_string(),
         config::SttProvider::Local => {
             #[cfg(feature = "parakeet")]
-            { "Parakeet ONNX (local)".to_string() }
+            {
+                "Parakeet ONNX (local)".to_string()
+            }
             #[cfg(not(feature = "parakeet"))]
-            { format!("whisper.cpp ({})", config.whisper_model_path) }
+            {
+                format!("whisper.cpp ({})", config.whisper_model_path)
+            }
         }
     };
 
@@ -252,7 +272,10 @@ async fn main() -> Result<()> {
     println!("└─────────────────────────────────────────────┘");
     println!();
     println!("  STT:  {}", stt_label);
-    println!("  LLM:  {} ({})", config.openai_model, config.openai_base_url);
+    println!(
+        "  LLM:  {} ({})",
+        config.openai_model, config.openai_base_url
+    );
     println!();
 
     // Interactive capture mode selection
@@ -264,7 +287,7 @@ async fn main() -> Result<()> {
 
     // Start audio capture(s) and create unified channel
     let (audio_tx, mut audio_rx) = mpsc::channel::<audio::AudioChunk>(100);
-    
+
     // IMPORTANT: We must keep these streams alive throughout main
     let mut _active_streams = Vec::new();
 
@@ -334,12 +357,10 @@ async fn main() -> Result<()> {
     let mut vad_detector = vad::VadDetector::default_config();
 
     // Conversation history for context
-    let mut conversation: Vec<ChatMessage> = vec![
-        ChatMessage {
-            role: "system".to_string(),
-            content: system_prompt,
-        },
-    ];
+    let mut conversation: Vec<ChatMessage> = vec![ChatMessage {
+        role: "system".to_string(),
+        content: system_prompt,
+    }];
 
     // Accumulate audio while speech is detected
     let mut speech_buffer: Vec<f32> = Vec::with_capacity(16000 * 10);
@@ -360,19 +381,47 @@ async fn main() -> Result<()> {
         tokio::select! {
             _ = tokio::signal::ctrl_c() => {
                 println!("\n  Stopping Pelendur...");
+                println!("  Generating post-interview summary...");
+
+                // F4: Generate Post-Interview Summary
+                match knowledge::post_interview_summary::generate_summary(
+                    &config,
+                    &memory,
+                    &answer_tracker,
+                    &session_title,
+                )
+                .await
+                {
+                    Ok(summary) => {
+                        println!("  ✓ Post-interview summary generated:");
+                        println!("    - {} topics identified", summary.topic_analysis.len());
+                        println!("    - {}/{} answers accepted ({}%)",
+                            summary.used_responses.len(),
+                            summary.total_turns,
+                            (summary.overall_confidence * 100.0) as u32);
+                        if !summary.gaps.is_empty() {
+                            println!("    - {} knowledge gaps detected", summary.gaps.len());
+                        }
+                    }
+                    Err(e) => {
+                        warn!("Failed to generate post-interview summary: {}", e);
+                        debug!("Falling back to basic session save");
+                    }
+                }
+
                 println!("  Saving interview session to knowledge base...");
-                
+
                 let mut session_content = String::from("# Interview Session Summary\n\n");
                 for msg in &conversation {
                     if msg.role != "system" {
                         session_content.push_str(&format!("**{}:** {}\n\n", msg.role.to_uppercase(), msg.content));
                     }
                 }
-                
+
                 knowledge_manager.save_to_all(&session_title, &session_content);
 
                 // Save session summary to Engram
-                let summary = format!("Interview session of {} with {} turns.", 
+                let summary = format!("Interview session of {} with {} turns.",
                     Local::now().format("%Y-%m-%d %H:%M"),
                     conversation.iter().filter(|m| m.role == "user").count());
                 if let Err(e) = memory.end_session(&summary).await {
@@ -384,7 +433,7 @@ async fn main() -> Result<()> {
                 println!("  ✓ Session saved. Goodbye!");
                 break;
             }
-            
+
             chunk = audio_rx.recv() => {
                 let chunk = match chunk {
                     Some(c) => c,
@@ -505,7 +554,7 @@ async fn main() -> Result<()> {
                             if !relevant_stories.is_empty() || !external_knowledge.is_empty() {
                                 let mut context_msg = String::from("RELEVANT CONTEXT FOUND:\n");
                                 for story in relevant_stories {
-                                    context_msg.push_str(&format!("- STAR STORY [{}]: {} -> {}\n", 
+                                    context_msg.push_str(&format!("- STAR STORY [{}]: {} -> {}\n",
                                         story.id, story.situacion, story.resultado));
                                 }
                                 for ext in external_knowledge {
@@ -548,6 +597,8 @@ async fn main() -> Result<()> {
                             match llm::generate_response(&config, &conversation).await {
                                 Ok(response) => {
                                     println!("{}", response);
+                                    // Record AI suggestion for F4 summary tracking
+                                    answer_tracker.record_suggestion(&transcription, &response);
                                     conversation.push(ChatMessage {
                                         role: "assistant".to_string(),
                                         content: response.clone(),

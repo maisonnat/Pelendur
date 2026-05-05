@@ -3,11 +3,11 @@ pub mod audio_config;
 pub mod config;
 pub mod conversation_memory;
 pub mod knowledge;
-pub mod llm;
-pub mod loopback;
 #[cfg(feature = "linux_audio")]
 pub mod linux_audio;
-pub mod stt;
-pub mod vad;
+pub mod llm;
+pub mod loopback;
 #[cfg(feature = "parakeet")]
 pub mod parakeet;
+pub mod stt;
+pub mod vad;

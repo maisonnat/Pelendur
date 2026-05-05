@@ -80,9 +80,10 @@ impl CompanyResearch {
             }
 
             // Parse key-value bullets
-            if let Some(val) = trimmed.strip_prefix("- **").and_then(|s| {
-                s.split_once("**: ")
-            }) {
+            if let Some(val) = trimmed
+                .strip_prefix("- **")
+                .and_then(|s| s.split_once("**: "))
+            {
                 let key = val.0.trim().to_lowercase();
                 let value = val.1.trim().to_string();
                 match key.as_str() {
@@ -101,9 +102,13 @@ impl CompanyResearch {
                 let item = trimmed.trim_start_matches("- ").trim();
                 if !item.is_empty() {
                     match current_section.as_str() {
-                        "key challenges" | "challenges" => research.key_challenges.push(item.to_string()),
+                        "key challenges" | "challenges" => {
+                            research.key_challenges.push(item.to_string())
+                        }
                         "products" | "product" => research.products.push(item.to_string()),
-                        "competitors" | "competition" => research.competitors.push(item.to_string()),
+                        "competitors" | "competition" => {
+                            research.competitors.push(item.to_string())
+                        }
                         "interview tips" | "tips" => research.interview_tips.push(item.to_string()),
                         "recent news" | "news" => research.recent_news.push(item.to_string()),
                         "funding" | "funding rounds" => {
@@ -169,7 +174,11 @@ impl CompanyResearch {
         if !self.funding_rounds.is_empty() {
             md.push_str("\n## Funding Rounds\n");
             for f in &self.funding_rounds {
-                md.push_str(&format!("- **{}**: {}\n", f.round, f.amount.as_deref().unwrap_or("N/A")));
+                md.push_str(&format!(
+                    "- **{}**: {}\n",
+                    f.round,
+                    f.amount.as_deref().unwrap_or("N/A")
+                ));
             }
         }
 
@@ -246,12 +255,16 @@ impl CompanyLoader {
     }
 
     /// Sync one company's research into the graph (upsert by name)
-    pub fn sync_to_graph(&self, research: &CompanyResearch, graph: &KnowledgeGraph) -> Result<CompanyEntity> {
+    pub fn sync_to_graph(
+        &self,
+        research: &CompanyResearch,
+        graph: &KnowledgeGraph,
+    ) -> Result<CompanyEntity> {
         // Check if company already exists by matching name
         let existing = graph.list_companies()?;
-        let matched = existing.into_iter().find(|c| {
-            c.name.to_lowercase() == research.company_name.to_lowercase()
-        });
+        let matched = existing
+            .into_iter()
+            .find(|c| c.name.to_lowercase() == research.company_name.to_lowercase());
 
         let entity = research.to_entity();
 
@@ -301,21 +314,22 @@ impl CompanyLoader {
     /// Get company research context for interview preparation
     pub fn get_interview_context(&self, company_name: &str) -> Result<String> {
         let dir_name = company_name.to_lowercase().replace(' ', "-");
-        let md_path = self.knowledge_base_path
+        let md_path = self
+            .knowledge_base_path
             .join("companies")
             .join(&dir_name)
             .join("overview.md");
 
         if !md_path.exists() {
-            return Err(anyhow::anyhow!("No research found for company '{}'", company_name));
+            return Err(anyhow::anyhow!(
+                "No research found for company '{}'",
+                company_name
+            ));
         }
 
         let research = CompanyResearch::from_markdown(&md_path)?;
 
-        let mut ctx = format!(
-            "## Company Research: {}\n\n",
-            research.company_name
-        );
+        let mut ctx = format!("## Company Research: {}\n\n", research.company_name);
 
         if let Some(v) = &research.industry {
             ctx.push_str(&format!("- **Industry**: {}\n", v));
@@ -375,7 +389,10 @@ mod tests {
 
         let research = CompanyResearch::from_markdown(&md_path).unwrap();
         assert_eq!(research.company_name, "CloudSEK");
-        assert_eq!(research.industry.unwrap(), "Cybersecurity, AI-driven Threat Intelligence");
+        assert_eq!(
+            research.industry.unwrap(),
+            "Cybersecurity, AI-driven Threat Intelligence"
+        );
         assert_eq!(research.key_challenges.len(), 2);
     }
 

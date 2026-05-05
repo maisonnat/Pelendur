@@ -128,7 +128,10 @@ impl CompanyResearcher {
             .join("overview.md");
 
         if overview_path.exists() {
-            info!("Company research already exists for '{}' at {:?}", company_name, overview_path);
+            info!(
+                "Company research already exists for '{}' at {:?}",
+                company_name, overview_path
+            );
             return Ok(ResearchStatus {
                 company_name: company_name.to_string(),
                 overview_path,
@@ -152,10 +155,11 @@ impl CompanyResearcher {
         let notebook_id = self.get_or_create_notebook().await?;
 
         // Step 3: Run deep research
-        info!("Running deep research for '{}' (notebook: {})", company_name, notebook_id);
-        let research_output = self
-            .run_deep_research(&notebook_id, company_name)
-            .await;
+        info!(
+            "Running deep research for '{}' (notebook: {})",
+            company_name, notebook_id
+        );
+        let research_output = self.run_deep_research(&notebook_id, company_name).await;
 
         let research = match research_output {
             Ok(report) if !report.trim().is_empty() => {
@@ -169,18 +173,27 @@ impl CompanyResearcher {
                 self.extract_research(company_name, &report).await?
             }
             Ok(_) => {
-                warn!("Deep research returned empty result for '{}' — falling back to LLM-only", company_name);
+                warn!(
+                    "Deep research returned empty result for '{}' — falling back to LLM-only",
+                    company_name
+                );
                 return self.fallback_research(company_name, graph).await;
             }
             Err(e) => {
-                warn!("Deep research failed for '{}': {} — falling back to LLM-only", company_name, e);
+                warn!(
+                    "Deep research failed for '{}': {} — falling back to LLM-only",
+                    company_name, e
+                );
                 return self.fallback_research(company_name, graph).await;
             }
         };
 
         // Step 5: Save to file
         let loader = CompanyLoader::new(
-            self.config.knowledge_base_path.to_str().unwrap_or("knowledge"),
+            self.config
+                .knowledge_base_path
+                .to_str()
+                .unwrap_or("knowledge"),
         );
         let path = loader.save_to_file(&research)?;
 
@@ -197,7 +210,8 @@ impl CompanyResearcher {
             "Company research saved for '{}' at {:?}",
             company_name, path
         );
-        self.ask_followup_questions(&notebook_id, company_name, &research).await;
+        self.ask_followup_questions(&notebook_id, company_name, &research)
+            .await;
 
         Ok(ResearchStatus {
             company_name: company_name.to_string(),
@@ -377,11 +391,7 @@ impl CompanyResearcher {
     }
 
     /// Run deep research on a company using the NotebookLM CLI.
-    async fn run_deep_research(
-        &self,
-        notebook_id: &str,
-        company_name: &str,
-    ) -> Result<String> {
+    async fn run_deep_research(&self, notebook_id: &str, company_name: &str) -> Result<String> {
         let query = format!(
             "Research company {company_name}. I need comprehensive data for interview preparation. \
              Find the following about {company_name}: \
@@ -400,17 +410,14 @@ impl CompanyResearcher {
             company_name = company_name
         );
 
-        info!("Starting deep research for '{}' (CLI research command)", company_name);
+        info!(
+            "Starting deep research for '{}' (CLI research command)",
+            company_name
+        );
 
         let output = self
             .run_notebooklm_cli_with_timeout(
-                &[
-                    "research",
-                    "--notebook-id",
-                    notebook_id,
-                    "--query",
-                    &query,
-                ],
+                &["research", "--notebook-id", notebook_id, "--query", &query],
                 RESEARCH_TIMEOUT_SECS,
             )
             .await
@@ -475,9 +482,7 @@ impl CompanyResearcher {
 
         let output = tokio::time::timeout(
             std::time::Duration::from_secs(timeout_secs),
-            tokio::process::Command::new(binary)
-                .args(args)
-                .output(),
+            tokio::process::Command::new(binary).args(args).output(),
         )
         .await
         .context("notebooklm-mcp command timed out")?
@@ -580,8 +585,10 @@ Rules:
         let json_str = extract_json(&response)
             .ok_or_else(|| anyhow::anyhow!("No JSON found in LLM response: {}", response))?;
 
-        let research: CompanyResearch = serde_json::from_str(&json_str)
-            .context(format!("Failed to parse LLM output as CompanyResearch: {}", json_str))?;
+        let research: CompanyResearch = serde_json::from_str(&json_str).context(format!(
+            "Failed to parse LLM output as CompanyResearch: {}",
+            json_str
+        ))?;
 
         info!(
             "Extracted structured data for '{}': industry={:?}, challenges={}, products={}, tips={}",
@@ -658,7 +665,10 @@ Rules:
             .context(format!("Failed to parse fallback LLM output: {}", json_str))?;
 
         let loader = CompanyLoader::new(
-            self.config.knowledge_base_path.to_str().unwrap_or("knowledge"),
+            self.config
+                .knowledge_base_path
+                .to_str()
+                .unwrap_or("knowledge"),
         );
         let path = loader.save_to_file(&research)?;
 
@@ -668,7 +678,10 @@ Rules:
             }
         }
 
-        info!("LLM-only research saved for '{}' at {:?}", company_name, path);
+        info!(
+            "LLM-only research saved for '{}' at {:?}",
+            company_name, path
+        );
 
         Ok(ResearchStatus {
             company_name: company_name.to_string(),
@@ -789,10 +802,7 @@ Some trailing text."#;
     #[test]
     fn test_company_research_struct_default() {
         let config = CompanyResearchConfig::default();
-        assert_eq!(
-            config.notebooklm_binary,
-            PathBuf::from(NOTEBOOKLM_BINARY)
-        );
+        assert_eq!(config.notebooklm_binary, PathBuf::from(NOTEBOOKLM_BINARY));
         assert_eq!(config.knowledge_base_path, PathBuf::from("knowledge"));
         assert!(config.research_notebook_id.is_none());
     }

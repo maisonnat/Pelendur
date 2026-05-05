@@ -155,7 +155,7 @@ impl<'a> StarMatcher<'a> {
 
         // 4. Compute keyword search results (FTS + fuzzy + tags)
         let keyword_results = self.search_keywords(context, &opts)?;
-        
+
         // 5. Compute match for each story
         let mut matches: Vec<StarMatch> = Vec::new();
 
@@ -163,7 +163,8 @@ impl<'a> StarMatcher<'a> {
             let story_text = self.build_story_embedding_text(story);
             let story_vector = self.embedding_service.embed(&story_text);
             let embedding_sim =
-                self.embedding_service.cosine_similarity(&query_vector, &story_vector) as f64;
+                self.embedding_service
+                    .cosine_similarity(&query_vector, &story_vector) as f64;
 
             // Keyword score: use existing search results or default to embedding_sim * 0.5
             let keyword_score = keyword_results
@@ -348,12 +349,7 @@ impl<'a> StarMatcher<'a> {
         &self,
         story: &StarStoryEntity,
         query: &str,
-    ) -> (
-        f64,
-        Vec<LinkedEntity>,
-        Vec<LinkedEntity>,
-        Vec<LinkedEntity>,
-    ) {
+    ) -> (f64, Vec<LinkedEntity>, Vec<LinkedEntity>, Vec<LinkedEntity>) {
         let edges = match self
             .graph
             .get_edges_for_entity(&story.id, EntityType::StarStory)
@@ -696,7 +692,10 @@ mod tests {
         let results = matcher
             .match_by_tags(&["performance".to_string(), "caching".to_string()])
             .unwrap();
-        assert!(!results.is_empty(), "Should find performance stories by tag");
+        assert!(
+            !results.is_empty(),
+            "Should find performance stories by tag"
+        );
     }
 
     #[test]
@@ -745,9 +744,6 @@ mod tests {
         let results = matcher
             .match_stories("performance latency optimization", Some(opts))
             .unwrap();
-        assert!(
-            results.len() <= 2,
-            "Should respect max_results limit"
-        );
+        assert!(results.len() <= 2, "Should respect max_results limit");
     }
 }

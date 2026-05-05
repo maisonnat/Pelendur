@@ -21,8 +21,8 @@ pub struct MemoryEntry {
 pub struct ConversationMemory {
     engram_url: String,
     project: String,
-    session_id: Option<String>,   // current Engram session UUID
-    max_context_messages: usize,  // how many past memories to inject
+    session_id: Option<String>,  // current Engram session UUID
+    max_context_messages: usize, // how many past memories to inject
 }
 
 impl ConversationMemory {
@@ -31,8 +31,11 @@ impl ConversationMemory {
     /// - `engram_url`: base URL of the Engram server (e.g. "http://localhost:7437")
     /// - `project`: Engram project namespace (e.g. "pelendur")
     /// - `max_context_messages`: max number of past memories to load into context
-    pub fn new(engram_url: impl Into<String>, project: impl Into<String>,
-               max_context_messages: usize) -> Self {
+    pub fn new(
+        engram_url: impl Into<String>,
+        project: impl Into<String>,
+        max_context_messages: usize,
+    ) -> Self {
         Self {
             engram_url: engram_url.into(),
             project: project.into(),
@@ -78,9 +81,14 @@ impl ConversationMemory {
         self.session_id = Some(sid.clone());
 
         // Also save the session title as an observation
-        self.save_observation(&format!("📋 Interview: {}", title),
-                              &format!("Interview session started at project '{}'. Title: {}", self.project, title))
-            .await?;
+        self.save_observation(
+            &format!("📋 Interview: {}", title),
+            &format!(
+                "Interview session started at project '{}'. Title: {}",
+                self.project, title
+            ),
+        )
+        .await?;
 
         info!("Conversation memory session started: {} — {}", sid, title);
         Ok(())
@@ -98,7 +106,9 @@ impl ConversationMemory {
 
     /// Save an arbitrary observation to the current Engram session.
     async fn save_observation(&self, title: &str, content: &str) -> Result<()> {
-        let session_id = self.session_id.as_ref()
+        let session_id = self
+            .session_id
+            .as_ref()
             .context("No active Engram session — call start_session() first")?;
 
         let url = format!("{}/observations", self.engram_url);
@@ -132,7 +142,11 @@ impl ConversationMemory {
     /// Uses Engram's hybrid search (FTS5 + vector embeddings) to find
     /// semantically related conversations from previous sessions.
     pub async fn search(&self, query: &str) -> Result<Vec<MemoryEntry>> {
-        let url = format!("{}/observations?query={}", self.engram_url, urlencoding(query));
+        let url = format!(
+            "{}/observations?query={}",
+            self.engram_url,
+            urlencoding(query)
+        );
 
         let client = reqwest::Client::new();
         let resp = client
@@ -158,10 +172,7 @@ impl ConversationMemory {
             created_at: Option<String>,
         }
 
-        let observations: Vec<RawObservation> = resp
-            .json()
-            .await
-            .unwrap_or_default();
+        let observations: Vec<RawObservation> = resp.json().await.unwrap_or_default();
 
         let mut entries: Vec<MemoryEntry> = observations
             .into_iter()
@@ -186,11 +197,11 @@ impl ConversationMemory {
     ///
     /// Returns `None` when no relevant context is found, so the caller can
     /// skip injecting an empty block.
-    pub async fn build_memory_context(&self, current_transcription: &str)
-        -> Result<Option<String>>
-    {
-        let entries = self.search(current_transcription).await
-            .unwrap_or_default();
+    pub async fn build_memory_context(
+        &self,
+        current_transcription: &str,
+    ) -> Result<Option<String>> {
+        let entries = self.search(current_transcription).await.unwrap_or_default();
 
         if entries.is_empty() {
             return Ok(None);
@@ -199,7 +210,10 @@ impl ConversationMemory {
         let mut lines = Vec::new();
         lines.push("━━━ CONTEXTO DE ENTREVISTAS ANTERIORES ━━━".to_string());
         lines.push("Las siguientes son preguntas y respuestas de sesiones prevas.".to_string());
-        lines.push("Úsalas para dar respuestas consistentes y basadas en experiencia real del candidato.".to_string());
+        lines.push(
+            "Úsalas para dar respuestas consistentes y basadas en experiencia real del candidato."
+                .to_string(),
+        );
         lines.push(String::new());
 
         for entry in &entries {
@@ -222,7 +236,8 @@ impl ConversationMemory {
             self.save_observation(
                 &truncate(&format!("📋 Session summary: {}", summary), 120),
                 summary,
-            ).await?;
+            )
+            .await?;
             info!("Conversation memory session ended: {}", sid);
         }
         Ok(())
