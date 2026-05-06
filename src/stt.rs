@@ -6,9 +6,16 @@ use std::io::Cursor;
 use std::process::Stdio;
 #[cfg(not(feature = "parakeet"))]
 use std::time::Instant;
-#[cfg(not(feature = "parakeet"))]
-use tokio::process::Command;
 use tracing::debug;
+
+/// Append a diagnostic line to pelendur-pipe.log (works inside spawn_blocking)
+#[cfg(not(feature = "parakeet"))]
+fn diag_log(msg: &str) {
+    use std::io::Write;
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("pelendur-pipe.log") {
+        let _ = writeln!(f, "[STT] {}", msg);
+    }
+}
 
 #[cfg(feature = "parakeet")]
 use crate::parakeet::ParakeetModel;
@@ -144,9 +151,11 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
 
     // Move to blocking thread to avoid tokio::process issues on Windows
     let text: String = tokio::task::spawn_blocking(move || -> Result<String> {
+        diag_log("spawn_blocking started");
         // Write temp WAV file (blocking I/O inside spawn_blocking)
         std::fs::write(&temp_wav, audio_wav)
             .context("Failed to write temp WAV file")?;
+        diag_log(&format!("wrote {} bytes to temp WAV", audio_wav.len()));
 
         // Validate model path exists
         if !std::path::Path::new(&model_path).exists() {
@@ -158,11 +167,13 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
                 model_path
             );
         }
+        diag_log(&format!("model exists at: {}", model_path));
 
         let threads = num_cpus().min(4);
         let temp_wav_str = temp_wav
             .to_str()
             .context("Temp WAV path contains non-UTF8 characters")?;
+        diag_log(&format!("spawning: {} -f {} ...", whisper_bin.display(), temp_wav_str));
 
         // Use std::process::Command (blocking) — avoids tokio::process deadlock on Windows
         let output = std::process::Command::new(&whisper_bin)
@@ -189,6 +200,7 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
                     whisper_bin.display()
                 )
             })?;
+        diag_log(&format!("whisper exited: status={}", output.status));
 
         // Read the text output file (whisper-cli adds .txt suffix to the --output-file path)
         let text = if txt_file.exists() {

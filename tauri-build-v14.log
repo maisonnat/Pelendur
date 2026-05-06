@@ -1,0 +1,256 @@
+﻿cargo :        Debug [tauri_cli::helpers::app_paths] Found Tauri project inside C:\Proyectos\Pelendur\src-tauri on 
+early lookup
+En línea: 1 Carácter: 37
++ ... royectos\Pelendur\src-tauri; cargo tauri build --verbose 2>&1 | Out-F ...
++                                  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (       Debug [t...on early lookup:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+       Debug [tauri_cli::helpers::app_paths] resolving frontend directory from C:\Proyectos\Pelendur\src-tauri
+       Debug [ignore::gitignore] opened gitignore file: C:\Users\maiso\AppData\Local\Temp\.gitignore
+       Debug [globset] built glob set; 0 literals, 3 basenames, 0 extensions, 0 prefixes, 0 suffixes, 0 required 
+extensions, 0 regexes
+       Debug [ignore::gitignore] opened gitignore file: \\?\C:\Proyectos\Pelendur\.gitignore
+       Debug [globset] glob `Glob("**/test-*")` converted to regex: `"(?-u)^(?:/?|.*/)test\\-[^/]*$"`
+       Debug [globset] glob `Glob("**/VoiceMeeterSetup*")` converted to regex: 
+`"(?-u)^(?:/?|.*/)VoiceMeeterSetup[^/]*$"`
+       Debug [globset] glob `Glob("**/.aider*")` converted to regex: `"(?-u)^(?:/?|.*/)\\.aider[^/]*$"`
+       Debug [globset] built glob set; 9 literals, 18 basenames, 0 extensions, 0 prefixes, 0 suffixes, 4 required 
+extensions, 3 regexes
+       Debug [ignore::gitignore] opened gitignore file: \\?\C:\Proyectos\Pelendur\.git\info\exclude
+       Debug [ignore::walk] ignoring C:\Proyectos\Pelendur\src-tauri\.env: Ignore(IgnoreMatch(Hidden))
+       Debug [ignore::walk] ignoring C:\Proyectos\Pelendur\src-tauri\target: Ignore(IgnoreMatch(Gitignore(Glob { from: 
+Some("C:\\Users\\maiso\\AppData\\Local\\Temp\\.gitignore"), original: "target/", actual: "**/target", is_whitelist: 
+false, is_only_dir: true })))
+        Info [tauri_cli::build] Looking up installed tauri packages to check mismatched versions...
+     Running [tauri_cli] Command `cargo build --bins --features tauri/custom-protocol --release`
+   Compiling ghostai-pilot v0.1.0 (C:\Proyectos\Pelendur)
+warning: unused imports: `debug`, `info`, and `warn`
+ --> C:\Proyectos\Pelendur\src\audio.rs:3:15
+  |
+3 | use tracing::{debug, info, warn};
+  |               ^^^^^  ^^^^  ^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `config`
+   --> C:\Proyectos\Pelendur\src\stt.rs:336:27
+    |
+336 | async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
+    |                           ^^^^^^ help: if this is intentional, prefix it with an underscore: `_config`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `use_api` is never read
+  --> C:\Proyectos\Pelendur\src\knowledge\embeddings.rs:88:5
+   |
+85 | pub struct VectorStore {
+   |            ----------- field in this struct
+...
+88 |     use_api: bool,
+   |     ^^^^^^^
+   |
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `ghostai-pilot` (lib) generated 3 warnings (run `cargo fix --lib -p ghostai-pilot` to apply 2 suggestions)
+   Compiling pelendur-overlay v0.1.0 (C:\Proyectos\Pelendur\src-tauri)
+warning: unused import: `config`
+ --> src\commands\audio.rs:2:28
+  |
+2 | use ghostai_pilot::{audio, config, knowledge, llm, loopback, mixer, stt, vad};
+  |                            ^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `ghostai_pilot::knowledge::graph::KnowledgeGraph`
+ --> src\commands\company.rs:4:5
+  |
+4 | use ghostai_pilot::knowledge::graph::KnowledgeGraph;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `tokio::task`
+ --> src\commands\company.rs:7:5
+  |
+7 | use tokio::task;
+  |     ^^^^^^^^^^^
+
+warning: unused import: `ghostai_pilot::knowledge::graph::KnowledgeGraph`
+ --> src\commands\graph.rs:3:5
+  |
+3 | use ghostai_pilot::knowledge::graph::KnowledgeGraph;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `SuggestionPayload` and `TranscriptionPayload`
+ --> src\commands\interview.rs:1:48
+  |
+1 | use crate::state::{AppState, InterviewSession, SuggestionPayload, TranscriptionPayload};
+  |                                                ^^^^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^^^^^^^
+
+warning: unused import: `ghostai_pilot::knowledge`
+ --> src\commands\interview.rs:3:5
+  |
+3 | use ghostai_pilot::knowledge;
+  |     ^^^^^^^^^^^^^^^^^^^^^^^^
+
+warning: unused imports: `Arc` and `Mutex`
+ --> src\commands\interview.rs:8:17
+  |
+8 | use std::sync::{Arc, Mutex};
+  |                 ^^^  ^^^^^
+
+warning: unexpected `cfg` condition value: `parakeet`
+  --> src\state.rs:43:11
+   |
+43 |     #[cfg(feature = "parakeet")]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `audio` and `default`
+   = help: consider adding `parakeet` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about 
+checking conditional configuration
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: unexpected `cfg` condition value: `parakeet`
+  --> src\main.rs:94:11
+   |
+94 |     #[cfg(feature = "parakeet")]
+   |           ^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: expected values for `feature` are: `audio` and `default`
+   = help: consider adding `parakeet` as a feature in `Cargo.toml`
+   = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about 
+checking conditional configuration
+
+warning: unexpected `cfg` condition value: `parakeet`
+   --> src\main.rs:118:19
+    |
+118 |             #[cfg(feature = "parakeet")]
+    |                   ^^^^^^^^^^^^^^^^^^^^
+    |
+    = note: expected values for `feature` are: `audio` and `default`
+    = help: consider adding `parakeet` as a feature in `Cargo.toml`
+    = note: see <https://doc.rust-lang.org/nightly/rustc/check-cfg/cargo-specifics.html> for more information about 
+checking conditional configuration
+
+warning: unused import: `Emitter`
+ --> src\commands\audio.rs:4:40
+  |
+4 | use tauri::{AppHandle, Manager, State, Emitter};
+  |                                        ^^^^^^^
+
+warning: unused import: `Emitter`
+ --> src\commands\interview.rs:9:24
+  |
+9 | use tauri::{AppHandle, Emitter, Manager, State};
+  |                        ^^^^^^^
+
+warning: unused variable: `interview`
+   --> src\commands\audio.rs:280:49
+    |
+280 | ...                   if let Some(interview) = session.as_ref() {
+    |                                   ^^^^^^^^^ help: if this is intentional, prefix it with an underscore: 
+`_interview`
+    |
+    = note: `#[warn(unused_variables)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused variable: `state`
+   --> src\commands\company.rs:113:37
+    |
+113 | pub fn get_company_research_context(state: State<'_, AppState>, company_name: String) -> Result<String, String> {
+    |                                     ^^^^^ help: if this is intentional, prefix it with an underscore: `_state`
+
+warning: unused variable: `state`
+   --> src\commands\interview.rs:361:30
+    |
+361 | pub fn list_company_research(state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, String> {
+    |                              ^^^^^ help: if this is intentional, prefix it with an underscore: `_state`
+
+warning: field `0` is never read
+  --> src\state.rs:10:26
+   |
+10 | pub struct StreamWrapper(pub cpal::Stream);
+   |            ------------- ^^^^^^^^^^^^^^^^
+   |            |
+   |            field in this struct
+   |
+   = help: consider removing this field
+   = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: field `turn_count` is never read
+  --> src\state.rs:30:9
+   |
+26 | pub struct InterviewSession {
+   |            ---------------- field in this struct
+...
+30 |     pub turn_count: usize,
+   |         ^^^^^^^^^^
+
+warning: `pelendur-overlay` (bin "pelendur-overlay") generated 17 warnings (run `cargo fix --bin "pelendur-overlay" -p 
+pelendur-overlay` to apply 10 suggestions)
+    Finished `release` profile [optimized] target(s) in 1m 16s
+       Built [tauri_cli::build] application at: C:\Proyectos\Pelendur\target-pelendur\release\pelendur-overlay.exe
+        Info [tauri_bundler::bundle] Patching C:\Proyectos\Pelendur\target-pelendur\release\pelendur-overlay.exe with 
+bundle type information: msi
+        Info [tauri_bundler::bundle::windows::msi] Target: x64
+     Running [tauri_bundler::bundle::windows::msi] candle for 
+"C:\\Proyectos\\Pelendur\\target-pelendur\\release\\wix\\x64\\main.wxs"
+     Running [tauri_bundler::utils] Command `C:\Users\maiso\AppData\Local\tauri\WixTools314\candle.exe  -arch x64 
+C:\Proyectos\Pelendur\target-pelendur\release\wix\x64\main.wxs 
+-dSourceDir=C:\Proyectos\Pelendur\target-pelendur\release\pelendur-overlay.exe`
+Windows Installer XML Toolset Compiler version 3.14.1.8722
+Copyright (c) .NET Foundation and contributors. All rights reserved.
+
+main.wxs
+     Running [tauri_bundler::bundle::windows::msi] light to produce 
+C:\Proyectos\Pelendur\target-pelendur\release\bundle\msi\Pelendur Overlay_0.1.0_x64_en-US.msi
+     Running [tauri_bundler::utils] Command `C:\Users\maiso\AppData\Local\tauri\WixTools314\light.exe  -ext 
+C:\Users\maiso\AppData\Local\tauri\WixTools314\WixUtilExtension.dll -ext 
+C:\Users\maiso\AppData\Local\tauri\WixTools314\WixUIExtension.dll -o 
+C:\Proyectos\Pelendur\target-pelendur\release\wix\x64\output.msi -cultures:en-us -loc 
+C:\Proyectos\Pelendur\target-pelendur\release\wix\x64\locale.wxl *.wixobj`
+Windows Installer XML Toolset Linker version 3.14.1.8722
+Copyright (c) .NET Foundation and contributors. All rights reserved.
+
+C:\Proyectos\Pelendur\target-pelendur\release\wix\x64\main.wxs(199) : warning LGHT1076 : ICE03: String overflow 
+(greater than length permitted in column); Table: CustomAction, Column: Target, Key(s): DownloadAndInvokeBootstrapper
+C:\Proyectos\Pelendur\target-pelendur\release\wix\x64\main.wxs(33) : warning LGHT1076 : ICE40: REINSTALLMODE is 
+defined in the Property table. This may cause difficulties.
+C:\Proyectos\Pelendur\target-pelendur\release\wix\x64\main.wxs(120) : warning LGHT1076 : ICE57: Component 
+'CMP_UninstallShortcut' has both per-user and per-machine data with an HKCU Registry KeyPath.
+C:\Proyectos\Pelendur\target-pelendur\release\wix\x64\main.wxs(40) : warning LGHT1076 : ICE61: This product should 
+remove only older versions of itself. No Maximum version was detected for the current product. (WIX_UPGRADE_DETECTED)
+        Info [tauri_bundler::bundle] Patching C:\Proyectos\Pelendur\target-pelendur\release\pelendur-overlay.exe with 
+bundle type information: nsis
+        Info [tauri_bundler::bundle::windows::nsis] Target: x64
+     Running [tauri_bundler::bundle::windows::nsis] makensis to produce 
+C:\Proyectos\Pelendur\target-pelendur\release\bundle\nsis\Pelendur Overlay_0.1.0_x64-setup.exe
+     Running [tauri_bundler::utils] Command `C:\Users\maiso\AppData\Local\tauri\NSIS\makensis.exe  -INPUTCHARSET UTF8 
+-OUTPUTCHARSET UTF8 -V3 C:\Proyectos\Pelendur\target-pelendur\release\nsis\x64\installer.nsi`
+MakeNSIS v3.11 - Copyright 1999-2025 Contributors
+See the file COPYING for license details.
+Credits can be found in the Users Manual.
+
+Processing config: C:\Users\maiso\AppData\Local\tauri\NSIS\nsisconf.nsh
+Processing script file: "C:\Proyectos\Pelendur\target-pelendur\release\nsis\x64\installer.nsi" (UTF8)
+
+Processed 1 file, writing output (x86-unicode):
+
+Output: "C:\Proyectos\Pelendur\target-pelendur\release\nsis\x64\nsis-output.exe"
+Install: 6 pages (384 bytes), 3 sections (6216 bytes), 1854 instructions (51912 bytes), 393 strings (14972 bytes), 1 language table (414 bytes).
+Uninstall: 2 pages (192 bytes), 1 section (2072 bytes), 615 instructions (17220 bytes), 195 strings (7466 bytes), 1 language table (274 bytes).
+Datablock optimizer saved 26498 bytes (~0.0%).
+
+Using lzma (compress whole) compression.
+
+EXE header size:               52736 / 38912 bytes
+Install code:                          (74362 bytes)
+Install data:                          (40797086 bytes)
+Uninstall code+data:                   (93824 bytes)
+Compressed data:             9745061 / 40965272 bytes
+CRC (0xDAC41045):                  4 / 4 bytes
+
+Total size:                  9797801 / 41004188 bytes (23.8%)
+    Finished [tauri_bundler::bundle] 2 bundles at:
+        C:\Proyectos\Pelendur\target-pelendur\release\bundle\msi\Pelendur Overlay_0.1.0_x64_en-US.msi
+        C:\Proyectos\Pelendur\target-pelendur\release\bundle\nsis\Pelendur Overlay_0.1.0_x64-setup.exe
+
