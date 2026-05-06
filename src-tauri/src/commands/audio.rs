@@ -214,10 +214,19 @@ pub async fn start_capture(
 
                         diag!("[DIAG] Calling STT... buf={}samp {}Hz", speech_buffer.len(), chunk.sample_rate);
 
-                        let stt_fut = stt::transcribe(&config, &wav_bytes);
-                        let stt_result = match rt.block_on(tokio::time::timeout(
-                            std::time::Duration::from_secs(30), stt_fut
-                        )) {
+                        // Run STT in a dedicated thread with 30s timeout
+                        let (tx_stt, rx_stt) = std::sync::mpsc::channel();
+                        let config_stt = config.clone();
+                        let wav_stt = wav_bytes.clone();
+                        std::thread::Builder::new()
+                            .name("stt-worker".into())
+                            .spawn(move || {
+                                let result = stt::transcribe_local_sync(&config_stt, &wav_stt);
+                                let _ = tx_stt.send(result);
+                            })
+                            .expect("Failed to spawn STT worker");
+
+                        let stt_result = match rx_stt.recv_timeout(std::time::Duration::from_secs(30)) {
                             Ok(Ok(t)) => Some(t),
                             Ok(Err(e)) => { diag!("[DIAG] STT error: {}", e); None }
                             Err(_) => { diag!("[DIAG] STT timeout (30s)"); None }

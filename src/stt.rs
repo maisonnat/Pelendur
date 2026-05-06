@@ -112,30 +112,19 @@ pub fn pcm_to_wav(samples: &[f32], sample_rate: u32) -> Result<Vec<u8>> {
     Ok(cursor.into_inner())
 }
 
-/// Transcribe audio — routes to Groq API, z.ai API, or local whisper.cpp
-pub async fn transcribe(config: &Config, audio_wav: &[u8]) -> Result<String> {
-    match config.stt_provider {
-        SttProvider::Groq => transcribe_groq(config, audio_wav).await,
-        SttProvider::Zai => transcribe_zai(config, audio_wav).await,
-        SttProvider::Local => transcribe_local(config, audio_wav).await,
-    }
-}
-
 // ============================================================
-// Local whisper.cpp via CLI
+// Local whisper.cpp via CLI — SYNCHRONOUS (no tokio)
 // ============================================================
 
-/// Transcribe using local whisper.cpp CLI
-/// Uses std::process::Command (blocking) via tokio::task::spawn_blocking
-/// because tokio::process::Command can deadlock on Windows with CUDA binaries.
+/// Transcribe using local whisper.cpp CLI — fully synchronous.
+/// No tokio involvement. Call from a std::thread directly.
 #[cfg(not(feature = "parakeet"))]
-async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
+pub fn transcribe_local_sync(config: &Config, audio_wav: &[u8]) -> Result<String> {
     let start = Instant::now();
 
     let whisper_bin = find_whisper_binary()?;
     let temp_dir = std::env::temp_dir();
 
-    // Pre-compute everything we need inside the blocking closure
     let temp_wav_name = format!(
         "pelendur_audio_{}.wav",
         std::time::SystemTime::now()
@@ -146,104 +135,90 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
     let temp_wav = temp_dir.join(&temp_wav_name);
     let txt_file = temp_dir.join(format!("{}.txt", temp_wav_name));
 
-    let model_path = config.whisper_model_path.clone();
-    let whisper_lang = config.whisper_language.clone();
+    // Write temp WAV file
+    std::fs::write(&temp_wav, audio_wav).context("Failed to write temp WAV file")?;
 
-    // Move to blocking thread to avoid tokio::process issues on Windows
-    let text: String = tokio::task::spawn_blocking(move || -> Result<String> {
-        diag_log("spawn_blocking started");
-        // Write temp WAV file (blocking I/O inside spawn_blocking)
-        std::fs::write(&temp_wav, audio_wav)
-            .context("Failed to write temp WAV file")?;
-        diag_log(&format!("wrote {} bytes to temp WAV", audio_wav.len()));
+    // Validate model path exists
+    let model_path = &config.whisper_model_path;
+    if !std::path::Path::new(model_path).exists() {
+        anyhow::bail!(
+            "Whisper model not found at: {}\n\
+             Download it with:\n\
+               whisper.cpp: models/download-ggml-model.bat base.en\n\
+             Or set WHISPER_MODEL_PATH in .env to the correct path.",
+            model_path
+        );
+    }
 
-        // Validate model path exists
-        if !std::path::Path::new(&model_path).exists() {
-            anyhow::bail!(
-                "Whisper model not found at: {}\n\
-                 Download it with:\n\
-                   whisper.cpp: models/download-ggml-model.bat base.en\n\
-                 Or set WHISPER_MODEL_PATH in .env to the correct path.",
-                model_path
-            );
+    let threads = num_cpus().min(4);
+    let temp_wav_str = temp_wav
+        .to_str()
+        .context("Temp WAV path contains non-UTF8 characters")?;
+
+    // Use std::process::Command — blocking, no tokio
+    let output = std::process::Command::new(&whisper_bin)
+        .args([
+            "-m",
+            model_path,
+            "-f",
+            temp_wav_str,
+            "-l",
+            &config.whisper_language,
+            "--no-timestamps",
+            "-t",
+            &threads.to_string(),
+            "--output-txt",
+            "--output-file",
+            temp_wav_str,
+        ])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .with_context(|| {
+            format!(
+                "Failed to run whisper-cli at: {}",
+                whisper_bin.display()
+            )
+        })?;
+
+    // Read the text output file (whisper-cli adds .txt suffix to the --output-file path)
+    let text = if txt_file.exists() {
+        let content = std::fs::read_to_string(&txt_file)
+            .context("Failed to read whisper output")?;
+        let _ = std::fs::remove_file(&txt_file);
+        content
+    } else {
+        // Fallback: parse stdout
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+
+        if !output.status.success() {
+            debug!("whisper-cli stderr: {}", stderr);
         }
-        diag_log(&format!("model exists at: {}", model_path));
 
-        let threads = num_cpus().min(4);
-        let temp_wav_str = temp_wav
-            .to_str()
-            .context("Temp WAV path contains non-UTF8 characters")?;
-        diag_log(&format!("spawning: {} -f {} ...", whisper_bin.display(), temp_wav_str));
-
-        // Use std::process::Command (blocking) — avoids tokio::process deadlock on Windows
-        let output = std::process::Command::new(&whisper_bin)
-            .args([
-                "-m",
-                &model_path,
-                "-f",
-                temp_wav_str,
-                "-l",
-                &whisper_lang,
-                "--no-timestamps",
-                "-t",
-                &threads.to_string(),
-                "--output-txt",
-                "--output-file",
-                temp_wav_str,
-            ])
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .with_context(|| {
-                format!(
-                    "Failed to run whisper-cli at: {}",
-                    whisper_bin.display()
-                )
-            })?;
-        diag_log(&format!("whisper exited: status={}", output.status));
-
-        // Read the text output file (whisper-cli adds .txt suffix to the --output-file path)
-        let text = if txt_file.exists() {
-            let content = std::fs::read_to_string(&txt_file)
-                .context("Failed to read whisper output")?;
-            let _ = std::fs::remove_file(&txt_file);
-            content
-        } else {
-            // Fallback: parse stdout
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            let stderr = String::from_utf8_lossy(&output.stderr);
-
-            if !output.status.success() {
-                debug!("whisper-cli stderr: {}", stderr);
-            }
-
-            stdout
-                .lines()
-                .filter_map(|line| {
-                    if let Some(pos) = line.find("] ") {
-                        Some(line[pos + 2..].trim().to_string())
+        stdout
+            .lines()
+            .filter_map(|line| {
+                if let Some(pos) = line.find("] ") {
+                    Some(line[pos + 2..].trim().to_string())
+                } else {
+                    let trimmed = line.trim();
+                    if !trimmed.is_empty() && !trimmed.starts_with('[') {
+                        Some(trimmed.to_string())
                     } else {
-                        let trimmed = line.trim();
-                        if !trimmed.is_empty() && !trimmed.starts_with('[') {
-                            Some(trimmed.to_string())
-                        } else {
-                            None
-                        }
+                        None
                     }
-                })
-                .collect::<Vec<_>>()
-                .join(" ")
-        };
+                }
+            })
+            .collect::<Vec<_>>()
+            .join(" ")
+    };
 
-        // Clean up temp WAV
-        let _ = std::fs::remove_file(&temp_wav);
-
-        Ok(text.trim().to_string())
-    })
-    .await
-    .context("spawn_blocking panicked")??;
+    // Clean up temp WAV
+    let _ = std::fs::remove_file(&temp_wav);
 
     let elapsed = start.elapsed();
+    let text = text.trim().to_string();
 
     if text.is_empty() {
         debug!("whisper.cpp returned empty ({}ms)", elapsed.as_millis());
@@ -252,6 +227,22 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
     }
 
     Ok(text)
+}
+
+/// Transcribe audio — routes to Groq API, z.ai API, or local whisper.cpp
+pub async fn transcribe(config: &Config, audio_wav: &[u8]) -> Result<String> {
+    match config.stt_provider {
+        SttProvider::Groq => transcribe_groq(config, audio_wav).await,
+        SttProvider::Zai => transcribe_zai(config, audio_wav).await,
+        SttProvider::Local => {
+            // Fall back to sync path — should not normally reach here
+            let config = config.clone();
+            let wav = audio_wav.to_vec();
+            tokio::task::spawn_blocking(move || transcribe_local_sync(&config, &wav))
+                .await
+                .context("spawn_blocking panicked")?
+        }
+    }
 }
 
 /// Find whisper-cli binary in common locations
