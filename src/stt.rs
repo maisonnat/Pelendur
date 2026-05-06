@@ -230,18 +230,26 @@ pub fn transcribe_local_sync(config: &Config, audio_wav: &[u8]) -> Result<String
     Ok(text)
 }
 
-/// Transcribe audio — routes to Groq API, z.ai API, or local whisper.cpp
+/// Transcribe audio — routes to Groq API, z.ai API, or local whisper.cpp / Parakeet
 pub async fn transcribe(config: &Config, audio_wav: &[u8]) -> Result<String> {
     match config.stt_provider {
         SttProvider::Groq => transcribe_groq(config, audio_wav).await,
         SttProvider::Zai => transcribe_zai(config, audio_wav).await,
         SttProvider::Local => {
-            // Fall back to sync path — should not normally reach here
-            let config = config.clone();
-            let wav = audio_wav.to_vec();
-            tokio::task::spawn_blocking(move || transcribe_local_sync(&config, &wav))
-                .await
-                .context("spawn_blocking panicked")?
+            #[cfg(feature = "parakeet")]
+            {
+                // Parakeet ONNX path — async, uses global model
+                transcribe_local(config, audio_wav).await
+            }
+            #[cfg(not(feature = "parakeet"))]
+            {
+                // whisper.cpp path — sync via spawn_blocking
+                let config = config.clone();
+                let wav = audio_wav.to_vec();
+                tokio::task::spawn_blocking(move || transcribe_local_sync(&config, &wav))
+                    .await
+                    .context("spawn_blocking panicked")?
+            }
         }
     }
 }
