@@ -163,8 +163,12 @@ pub async fn start_capture(
         let mut is_capturing = false;
         // Track last partial transcription position (in samples @ chunk rate)
         let mut last_partial_pos: usize = 0;
+        // Pre-roll ring buffer — captures ~200ms before VAD triggers
+        let mut pre_roll = ghostai_pilot::ringbuf::AudioRingBuffer::default_config();
 
         while let Ok(chunk) = audio_rx.recv() {
+            // Always feed ring buffer for pre-roll lookahead
+            pre_roll.push(&chunk.samples);
             let rms_val = (chunk.samples.iter().map(|s|s*s).sum::<f32>()/chunk.samples.len() as f32).sqrt();
             diag!("[DIAG] Chunk: {}samp {}Hz rms={:.4}", chunk.samples.len(), chunk.sample_rate, rms_val);
             // Audio level visualization
@@ -192,6 +196,12 @@ pub async fn start_capture(
                     is_capturing = true;
                     speech_buffer.clear();
                     last_partial_pos = 0;
+                    // Prepone pre-roll audio (~200ms before VAD triggered)
+                    // This captures the beginning of words that the VAD might have missed
+                    let roll = pre_roll.drain();
+                    if !roll.is_empty() {
+                        speech_buffer.extend(roll);
+                    }
                     emit_to_window(&app_handle, "partial-transcription",
                         TranscriptionPayload { text: String::new() });
                     speech_buffer.extend_from_slice(&chunk.samples);

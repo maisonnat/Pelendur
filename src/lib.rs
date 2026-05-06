@@ -10,5 +10,6 @@ pub mod loopback;
 pub mod mixer;
 #[cfg(feature = "parakeet")]
 pub mod parakeet;
+pub mod ringbuf;
 pub mod stt;
 pub mod vad;
