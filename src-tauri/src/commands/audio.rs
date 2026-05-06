@@ -205,8 +205,8 @@ pub async fn start_capture(
                             diag!("[DIAG] Buffer <8k, skip");
                             continue;
                         }
-                        // Limit buffer to 10 seconds
-                        let max_samp = chunk.sample_rate as usize * 10;
+                        // Limit buffer to 2 seconds for fast local inference
+                        let max_samp = chunk.sample_rate as usize * 2;
                         if speech_buffer.len() > max_samp {
                             diag!("[DIAG] Trunc buf {} -> {}", speech_buffer.len(), max_samp);
                             speech_buffer.truncate(max_samp);
