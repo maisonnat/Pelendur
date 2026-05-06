@@ -205,15 +205,29 @@ pub async fn start_capture(
                             diag!("[DIAG] Buffer <8k, skip");
                             continue;
                         }
+                        // Limit buffer to 10 seconds
+                        let max_samp = chunk.sample_rate as usize * 10;
+                        if speech_buffer.len() > max_samp {
+                            diag!("[DIAG] Trunc buf {} -> {}", speech_buffer.len(), max_samp);
+                            speech_buffer.truncate(max_samp);
+                        }
 
                         diag!("[DIAG] Calling STT... buf={}samp {}Hz", speech_buffer.len(), chunk.sample_rate);
 
-                        if let Ok(transcription) = rt.block_on(stt::transcribe(&config, &wav_bytes)) {
+                        let stt_fut = stt::transcribe(&config, &wav_bytes);
+                        let stt_result = match rt.block_on(tokio::time::timeout(
+                            std::time::Duration::from_secs(30), stt_fut
+                        )) {
+                            Ok(Ok(t)) => Some(t),
+                            Ok(Err(e)) => { diag!("[DIAG] STT error: {}", e); None }
+                            Err(_) => { diag!("[DIAG] STT timeout (30s)"); None }
+                        };
+                        if let Some(transcription) = stt_result {
                             if transcription.trim().is_empty() {
                                 diag!("[DIAG] STT returned empty");
                                 continue;
                             }
-                            diag!("[DIAG] STT OK ({}chars)", transcription.len());
+                            diag!("[DIAG] STT OK ({}chars): {}", transcription.len(), &transcription[..80.min(transcription.len())]);
                             println!("  📝 \"{}\"", transcription);
 
                             emit_to_window(&app_handle, "transcription-update", TranscriptionPayload { text: transcription.clone() });
