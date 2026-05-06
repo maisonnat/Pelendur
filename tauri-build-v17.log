@@ -1,0 +1,71 @@
+﻿cargo :         Info Looking up installed tauri packages to check mismatched versions...
+En línea: 1 Carácter: 37
++ cd C:\Proyectos\Pelendur\src-tauri; cargo tauri build 2>&1 | Out-File ...
++                                     ~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (        Info Lo...hed versions...:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+   Compiling windows-sys v0.61.2
+   Compiling num-traits v0.2.19
+   Compiling atoi v2.0.0
+   Compiling euclid v0.20.14
+   Compiling chrono v0.4.44
+   Compiling sqlx-core v0.8.0
+   Compiling pdf-extract v0.7.12
+   Compiling winapi-util v0.1.11
+   Compiling dirs-sys v0.5.0
+   Compiling mio v1.2.0
+   Compiling socket2 v0.6.3
+   Compiling tempfile v3.27.0
+   Compiling dirs v6.0.0
+   Compiling same-file v1.0.6
+   Compiling walkdir v2.5.0
+   Compiling tauri-utils v2.8.3
+   Compiling tokio v1.51.1
+   Compiling sqlx-sqlite v0.8.0
+   Compiling tokio-stream v0.1.18
+   Compiling tauri-build v2.5.6
+   Compiling tauri-plugin v2.5.4
+   Compiling tauri-codegen v2.5.5
+   Compiling tauri v2.10.3
+   Compiling tauri-plugin-fs v2.5.0
+   Compiling tauri-macros v2.5.5
+   Compiling tauri-plugin-positioner v2.3.1
+   Compiling tauri-plugin-global-shortcut v2.3.1
+   Compiling tauri-plugin-dialog v2.7.0
+   Compiling pelendur-overlay v0.1.0 (C:\Proyectos\Pelendur\src-tauri)
+   Compiling sqlx-macros-core v0.8.0
+   Compiling sqlx-macros v0.8.0
+   Compiling sqlx v0.8.0
+   Compiling ghostai-pilot v0.1.0 (C:\Proyectos\Pelendur)
+error[E0425]: cannot find type `ParakeetModel` in this scope
+  --> C:\Proyectos\Pelendur\src\stt.rs:26:39
+   |
+26 | static PARAKEET_MODEL: OnceLock<Mutex<ParakeetModel>> = OnceLock::new();
+   |                                       ^^^^^^^^^^^^^ not found in this scope
+
+warning: unused imports: `debug`, `info`, and `warn`
+ --> C:\Proyectos\Pelendur\src\audio.rs:3:15
+  |
+3 | use tracing::{debug, info, warn};
+  |               ^^^^^  ^^^^  ^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `std::sync::mpsc`
+  --> C:\Proyectos\Pelendur\src\stt.rs:23:5
+   |
+23 | use std::sync::mpsc;
+   |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `tokio::sync::broadcast`
+  --> C:\Proyectos\Pelendur\src\stt.rs:24:5
+   |
+24 | use tokio::sync::broadcast;
+   |     ^^^^^^^^^^^^^^^^^^^^^^
+
+For more information about this error, try `rustc --explain E0425`.
+warning: `ghostai-pilot` (lib) generated 3 warnings
+error: could not compile `ghostai-pilot` (lib) due to 1 previous error; 3 warnings emitted
+warning: build failed, waiting for other jobs to finish...
+       Error failed to build app: failed to build app

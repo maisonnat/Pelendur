@@ -23,6 +23,7 @@ use std::sync::{Mutex, OnceLock};
 use std::sync::mpsc;
 use tokio::sync::broadcast;
 
+#[cfg(feature = "parakeet")]
 static PARAKEET_MODEL: OnceLock<Mutex<ParakeetModel>> = OnceLock::new();
 
 /// Inference request types for the dedicated inference thread.
