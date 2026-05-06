@@ -13,8 +13,52 @@ use tracing::debug;
 #[cfg(feature = "parakeet")]
 use crate::parakeet::ParakeetModel;
 use std::sync::{Mutex, OnceLock};
+use std::sync::mpsc;
+use tokio::sync::broadcast;
 
 static PARAKEET_MODEL: OnceLock<Mutex<ParakeetModel>> = OnceLock::new();
+
+/// Inference request types for the dedicated inference thread.
+#[cfg(feature = "parakeet")]
+pub enum InferenceRequest {
+    Partial { samples: Vec<f32> },
+    Final { samples: Vec<f32>, response_tx: tokio::sync::oneshot::Sender<Result<String>> },
+}
+
+/// Spawn a dedicated Parakeet inference thread (streaming mode).
+/// Returns (sender, partial_receiver).
+#[cfg(feature = "parakeet")]
+pub fn spawn_parakeet_inference(
+    model: ParakeetModel,
+) -> (mpsc::Sender<InferenceRequest>, broadcast::Receiver<String>) {
+    let (tx, rx) = mpsc::channel::<InferenceRequest>();
+    let (partial_tx, partial_rx) = broadcast::channel::<String>(16);
+    let partial_tx_clone = partial_tx.clone();
+
+    std::thread::Builder::new()
+        .name("parakeet-inference".into())
+        .spawn(move || {
+            let mut model = model;
+            while let Ok(req) = rx.recv() {
+                match req {
+                    InferenceRequest::Partial { samples } => {
+                        if let Ok(text) = transcribe_parakeet_sync(&mut model, samples) {
+                            if !text.trim().is_empty() {
+                                let _ = partial_tx_clone.send(text);
+                            }
+                        }
+                    }
+                    InferenceRequest::Final { samples, response_tx } => {
+                        let result = transcribe_parakeet_sync(&mut model, samples);
+                        let _ = response_tx.send(result);
+                    }
+                }
+            }
+        })
+        .expect("Failed to spawn Parakeet inference thread");
+
+    (tx, partial_rx)
+}
 
 /// Initialize the global Parakeet model (call once at startup).
 #[cfg(feature = "parakeet")]
