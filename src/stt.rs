@@ -169,7 +169,6 @@ pub fn transcribe_local_sync(config: &Config, audio_wav: &[u8]) -> Result<String
         "-l",
         &config.whisper_language,
         "--no-timestamps",
-        "--keep-context",
         "-t",
         &threads.to_string(),
         "--output-txt",
