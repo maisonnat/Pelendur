@@ -138,7 +138,6 @@ pub async fn start_capture(
 
     std::thread::spawn(move || {
         let rt = tokio::runtime::Runtime::new().unwrap();
-        let mut vad_detector = vad::VadDetector::default_config();
 
         // Waveform target points for the HUD display
         const WAVEFORM_POINTS: usize = 180;
@@ -165,6 +164,9 @@ pub async fn start_capture(
         let mut last_partial_pos: usize = 0;
         // Pre-roll ring buffer — captures ~200ms before VAD triggers
         let mut pre_roll = ghostai_pilot::ringbuf::AudioRingBuffer::default_config();
+        // WebRTC ML-based VAD — superior to energy-based. Initialized at 16kHz,
+        // the actual sample rate is set per-chunk in the VAD's internal resampler.
+        let mut vad_detector = vad::WebRtcVadDetector::default_config();
 
         while let Ok(chunk) = audio_rx.recv() {
             // Always feed ring buffer for pre-roll lookahead
