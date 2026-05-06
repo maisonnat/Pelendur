@@ -60,6 +60,11 @@ pelendur.db-wal
 
 # Debug logs
 wasapi-debug.log
+pelendur-pipe.log
+
+# Python cache
+__pycache__/
+*.pyc
 
 # Kanban worktrees
 .worktrees/

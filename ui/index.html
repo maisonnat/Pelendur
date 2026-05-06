@@ -8,30 +8,43 @@
 </head>
 <body data-tauri-drag-region>
 <div id="hud-container" class="hud-container" data-tauri-drag-region>
-    <!-- Minimal mode icon (visible when minimal) -->
+    <!-- Minimal mode icon -->
     <div id="minimal-icon" class="minimal-icon hidden" title="Click to expand HUD">
-      <span class="minimal-dot"></span>
+      <span class="pl-minimal-dot"></span>
     </div>
 
-    <button id="profile-btn" class="profile-btn icon-btn" title="Open Profile Management">Profile</button>
-    <div class="controls" data-tauri-drag-region>
-      <button id="audio-source-btn" class="icon-btn" title="Select Audio Source">🎧</button>
-      <button id="interview-btn" class="icon-btn interview-btn" title="Start Interview Mode">🎙️</button>
-      <button id="minimal-btn" class="icon-btn" title="Toggle Minimal Mode (compact icon)">🔘</button>
-      <button id="lock-btn" class="icon-btn" title="Lock/Unlock Click-through (Ctrl+Alt+L)">🔓</button>
-      <button id="clear-btn" class="icon-btn" title="Clear Feed">🗑️</button>
-      <button id="regenerate-btn" class="icon-btn" title="Regenerate Last Suggestion">🔄</button>
-      <button id="close-btn" class="icon-btn" title="Close Pelendur">✕</button>
-      <div id="status-indicator" class="status-indicator">●</div>
+    <!-- Control bar -->
+    <div class="pl-control-bar" data-tauri-drag-region>
+      <div class="pl-control-bar__left">
+        <button id="profile-btn" class="pl-btn pl-btn--icon" title="Open Profile Management">Profile</button>
+      </div>
+      <div class="pl-control-bar__right">
+        <button id="audio-source-btn" class="pl-btn pl-btn--icon" title="Select Audio Source">🎧</button>
+        <button id="interview-btn" class="pl-btn pl-btn--icon interview-btn" title="Start Interview Mode">🎙️</button>
+        <button id="minimal-btn" class="pl-btn pl-btn--icon" title="Toggle Minimal Mode">🔘</button>
+        <button id="lock-btn" class="pl-btn pl-btn--icon" title="Lock/Unlock Click-through (Ctrl+Alt+L)">🔓</button>
+        <button id="clear-btn" class="pl-btn pl-btn--icon" title="Clear Feed">🗑️</button>
+        <button id="regenerate-btn" class="pl-btn pl-btn--icon" title="Regenerate Last Suggestion">🔄</button>
+        <button id="close-btn" class="pl-btn pl-btn--icon" title="Close Pelendur">✕</button>
+        <span id="status-indicator" class="pl-status-dot pl-status-dot--idle"></span>
+      </div>
     </div>
 
-    <!-- Interview status bar (shown when interview is active) -->
-    <div id="interview-status-bar" class="interview-status-bar hidden">
-      <span class="interview-badge">🎙️ Interview Active</span>
-      <span id="interview-company-display" class="interview-company-display">—</span>
-      <span id="interview-timer" class="interview-timer">00:00</span>
+    <!-- System status bar -->
+    <div id="pl-system-status" class="pl-system-status pl-system-status--loading">
+      <span class="pl-system-item" data-component="stt"><span class="pl-status-dot"></span> STT</span>
+      <span class="pl-system-item" data-component="llm"><span class="pl-status-dot"></span> LLM</span>
+      <span class="pl-system-item" data-component="kg"><span class="pl-status-dot"></span> KG</span>
     </div>
 
+    <!-- Interview status bar -->
+    <div id="interview-status-bar" class="pl-status-bar hidden">
+      <span class="pl-badge">🎙️ Interview Active</span>
+      <span id="interview-company-display" class="pl-status-bar__company">—</span>
+      <span id="interview-timer" class="pl-status-bar__timer">00:00</span>
+    </div>
+
+    <!-- Knowledge panel -->
     <div id="knowledge-panel" class="knowledge-panel hidden">
       <div class="panel-header">
         <span class="icon">🧠</span>
@@ -51,46 +64,46 @@
       </div>
     </div>
 
-    <!-- Company Selector Modal (for starting interview) -->
-    <div id="company-modal-overlay" class="modal-overlay hidden"></div>
-    <div id="company-modal" class="modal hidden">
-      <div class="modal-header">
+    <!-- Company selector modal -->
+    <div id="company-modal-overlay" class="pl-modal-overlay hidden"></div>
+    <div id="company-modal" class="pl-modal hidden">
+      <div class="pl-modal-header">
         <span>🎙️ Start Interview</span>
-        <button id="close-company-modal-btn" class="close-btn">&times;</button>
+        <button id="close-company-modal-btn" class="pl-modal-close">&times;</button>
       </div>
-      <div class="modal-body">
-        <label class="modal-label">Select Company:</label>
-        <div id="company-list" class="company-list">
+      <div class="pl-modal-body">
+        <label class="pl-modal-label">Select Company:</label>
+        <div id="company-list" class="pl-company-list">
           <div class="loading-text">Loading companies...</div>
         </div>
-        <div class="company-custom-row">
-          <label class="modal-label">Or type a custom company:</label>
-          <div class="company-input-row">
-            <input type="text" id="custom-company-input" class="company-input" placeholder="e.g., CrowdStrike, Google, ..." />
-            <button id="start-with-custom-btn" class="primary-btn">Start</button>
+        <div class="pl-company-custom">
+          <label class="pl-modal-label">Or type a custom company:</label>
+          <div class="pl-input-row">
+            <input type="text" id="custom-company-input" class="pl-input" placeholder="e.g., CrowdStrike, Google, ..." />
+            <button id="start-with-custom-btn" class="pl-btn pl-btn--primary">Start</button>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Summary Modal (appears when interview ends) -->
-    <div id="summary-modal-overlay" class="modal-overlay hidden"></div>
-    <div id="summary-modal" class="modal modal-wide hidden">
-      <div class="modal-header">
+    <!-- Summary modal -->
+    <div id="summary-modal-overlay" class="pl-modal-overlay hidden"></div>
+    <div id="summary-modal" class="pl-modal pl-modal--wide hidden">
+      <div class="pl-modal-header">
         <span>📋 Interview Summary</span>
-        <button id="close-summary-modal-btn" class="close-btn">&times;</button>
+        <button id="close-summary-modal-btn" class="pl-modal-close">&times;</button>
       </div>
-      <div id="summary-content" class="modal-body summary-body">
+      <div id="summary-content" class="pl-modal-body">
         <div class="loading-text">Generating summary...</div>
       </div>
     </div>
 
-    <!-- Process Selector Modal -->
-    <div id="modal-overlay" class="modal-overlay hidden"></div>
-    <div id="process-modal" class="modal hidden">
-      <div class="modal-header">
+    <!-- Process selector modal -->
+    <div id="modal-overlay" class="pl-modal-overlay hidden"></div>
+    <div id="process-modal" class="pl-modal hidden">
+      <div class="pl-modal-header">
         <span>Select Audio Source</span>
-        <button id="close-modal-btn" class="close-btn">&times;</button>
+        <button id="close-modal-btn" class="pl-modal-close">&times;</button>
       </div>
       <div id="process-list" class="process-list">
         <!-- Processes populated here -->
@@ -98,18 +111,23 @@
     </div>
 
     <div class="main-content" data-tauri-drag-region>
+      <!-- Context bar -->
       <div id="knowledge-context-bar" class="context-bar hidden">
         <span id="context-indicator" class="context-indicator"></span>
         <div id="skill-tags" class="skill-tags"></div>
       </div>
+
+      <!-- Main suggestion card -->
       <div id="suggestions-feed" class="suggestions-feed" data-tauri-drag-region>
-        <div class="suggestion-card" data-tauri-drag-region>
-          <div class="card-content" id="main-suggestion">Cargando Pelendur...</div>
+        <div class="pl-card--suggestion" data-tauri-drag-region>
+          <div class="pl-card__content" id="main-suggestion">Cargando Pelendur...</div>
         </div>
       </div>
 
-      <div id="partial-transcription" class="partial-transcription partial-hidden"></div>
+      <!-- Partial transcription -->
+      <div id="partial-transcription" class="pl-partial-hidden"></div>
 
+      <!-- Transcription feed -->
       <div id="transcription-feed" class="transcription-feed" data-tauri-drag-region>
         <!-- Transcribed text appears here -->
       </div>

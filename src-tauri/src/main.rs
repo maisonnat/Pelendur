@@ -117,9 +117,19 @@ fn main() {
             memory,
             #[cfg(feature = "parakeet")]
             parakeet_model: Arc::new(Mutex::new(None)),
+            #[cfg(feature = "testing")]
+            test_metrics: Arc::new(Mutex::new(state::TestMetrics::default())),
         })
         .setup(|app| {
             let _window = app.get_webview_window("main").unwrap();
+
+            // Emit system status to HUD
+            let _ = app.emit("system-status", serde_json::json!({
+                "stt": "ready",
+                "llm": "ready",
+                "kg": "ready",
+            }));
+
             if let Ok(shortcut) = "Ctrl+Alt+L".parse::<Shortcut>() {
                 let _ = app.global_shortcut().register(shortcut);
             }
@@ -215,6 +225,18 @@ fn main() {
             commands::company::research_company,
             commands::company::list_unresearched_companies,
             commands::company::research_all_companies,
+            #[cfg(feature = "testing")]
+            commands::testing::get_test_metrics,
+            #[cfg(feature = "testing")]
+            commands::testing::inject_test_audio,
+            #[cfg(feature = "testing")]
+            commands::testing::get_hud_state,
+            #[cfg(feature = "testing")]
+            commands::testing::simulate_keyboard,
+            #[cfg(feature = "testing")]
+            commands::testing::set_mode,
+            #[cfg(feature = "testing")]
+            commands::testing::reset_metrics,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

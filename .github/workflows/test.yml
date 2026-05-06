@@ -1,0 +1,19 @@
+name: Testing
+
+on: [pull_request]
+
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
+      - name: Build with testing feature
+        run: cd src-tauri && cargo build --features audio,testing
+      - name: Run test suite
+        run: python scripts/testing/run_tests.py
+      - name: Upload test report
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-report
+          path: test-report/

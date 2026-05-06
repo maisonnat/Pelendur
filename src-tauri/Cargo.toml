@@ -6,6 +6,7 @@ edition = "2021"
 [features]
 default = ["audio"]
 audio = ["ghostai-pilot/audio"]
+testing = ["ghostai-pilot/audio"]
 
 [build-dependencies]
 tauri-build = { version = "2.0.0", features = [] }
@@ -22,4 +23,6 @@ dotenvy = "0.15"
 tokio = { version = "1", features = ["full"] }
 chrono = "0.4"
 cpal = "0.15"
+reqwest = { version = "0.12", features = ["json", "stream"] }
+futures-util = "0.3"
 tauri-plugin-dialog = "2"

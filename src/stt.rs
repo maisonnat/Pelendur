@@ -3,11 +3,11 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::io::Cursor;
 #[cfg(not(feature = "parakeet"))]
-use std::process::Stdio;
-#[cfg(not(feature = "parakeet"))]
+use std::process::{Command, Stdio};
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 use std::time::Instant;
-use tracing::debug;
-
+use tracing::{debug, info, warn};
 /// Append a diagnostic line to pelendur-pipe.log (works inside spawn_blocking)
 #[cfg(not(feature = "parakeet"))]
 fn diag_log(msg: &str) {
@@ -121,6 +121,9 @@ pub fn pcm_to_wav(samples: &[f32], sample_rate: u32) -> Result<Vec<u8>> {
 /// No tokio involvement. Call from a std::thread directly.
 #[cfg(not(feature = "parakeet"))]
 pub fn transcribe_local_sync(config: &Config, audio_wav: &[u8]) -> Result<String> {
+    #[cfg(target_os = "windows")]
+    const CREATE_NO_WINDOW: u32 = 0x08000000;
+
     let start = Instant::now();
 
     let whisper_bin = find_whisper_binary()?;
@@ -157,24 +160,29 @@ pub fn transcribe_local_sync(config: &Config, audio_wav: &[u8]) -> Result<String
         .context("Temp WAV path contains non-UTF8 characters")?;
 
     // Use std::process::Command — blocking, no tokio
-    let output = std::process::Command::new(&whisper_bin)
-        .args([
-            "-m",
-            model_path,
-            "-f",
-            temp_wav_str,
-            "-l",
-            &config.whisper_language,
-            "--no-timestamps",
-            "-t",
-            &threads.to_string(),
-            "--output-txt",
-            "--output-file",
-            temp_wav_str,
-        ])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .output()
+    let mut cmd = std::process::Command::new(&whisper_bin);
+    cmd.args([
+        "-m",
+        model_path,
+        "-f",
+        temp_wav_str,
+        "-l",
+        &config.whisper_language,
+        "--no-timestamps",
+        "--keep-context",
+        "-t",
+        &threads.to_string(),
+        "--output-txt",
+        "--output-file",
+        temp_wav_str,
+    ])
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped());
+
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    let output = cmd.output()
         .with_context(|| {
             format!(
                 "Failed to run whisper-cli at: {}",

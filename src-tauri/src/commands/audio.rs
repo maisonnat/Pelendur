@@ -1,8 +1,9 @@
 use crate::state::{AppState, AudioDevice, AudioLevelPayload, StreamWrapper, TranscriptionPayload, SuggestionPayload};
-use ghostai_pilot::{audio, config, knowledge, llm, loopback, mixer, stt, vad};
+use ghostai_pilot::{audio, knowledge, loopback, mixer, stt, vad};
 use ghostai_pilot::llm::ChatMessage;
 use tauri::{AppHandle, Manager, State, Emitter};
 use cpal::traits::{DeviceTrait, HostTrait};
+use futures_util::StreamExt;
 
 // ── Audio Level Computation ──────────────────────────────────────────────
 
@@ -160,6 +161,8 @@ pub async fn start_capture(
 
         let mut speech_buffer: Vec<f32> = Vec::with_capacity(16000 * 10);
         let mut is_capturing = false;
+        // Track last partial transcription position (in samples @ chunk rate)
+        let mut last_partial_pos: usize = 0;
 
         while let Ok(chunk) = audio_rx.recv() {
             let rms_val = (chunk.samples.iter().map(|s|s*s).sum::<f32>()/chunk.samples.len() as f32).sqrt();
@@ -188,6 +191,9 @@ pub async fn start_capture(
                     diag!("[DIAG] VAD SpeechStart (rms={:.4})", rms_val);
                     is_capturing = true;
                     speech_buffer.clear();
+                    last_partial_pos = 0;
+                    emit_to_window(&app_handle, "partial-transcription",
+                        TranscriptionPayload { text: String::new() });
                     speech_buffer.extend_from_slice(&chunk.samples);
                 }
                 vad::VadEvent::SpeechEnd { .. } => {
@@ -279,29 +285,127 @@ pub async fn start_capture(
                             let transcription_for_engram = transcription.clone();
                             conversation.push(ChatMessage { role: "user".to_string(), content: transcription });
 
-                            if let Ok(response) = rt.block_on(llm::generate_response(&config, &conversation)) {
-                                println!("  🤖 IA: {}", response);
-                                emit_to_window(&app_handle, "suggestion-update", SuggestionPayload { text: response.clone() });
-                                conversation.push(ChatMessage { role: "assistant".to_string(), content: response.clone() });
+                            // --- Streaming LLM response to HUD ---
+                            // Shows tokens progressively instead of waiting for full response
+                            let url = format!("{}/chat/completions",
+                                config.openai_base_url.trim_end_matches('/'));
+                            let llm_request = serde_json::json!({
+                                "model": config.openai_model,
+                                "messages": &*conversation,
+                                "stream": true,
+                                "max_tokens": 500,
+                            });
 
-                                // Store the turn to Engram if in interview mode
-                                if let Ok(session) = interview_session.lock() {
-                                    if let Some(interview) = session.as_ref() {
-                                        if let Ok(memory) = memory.lock() {
-                                            if let Err(e) = rt.block_on(memory.save_turn(&transcription_for_engram, &response)) {
-                                                eprintln!("  ⚠️ Engram turn save failed: {}", e);
-                                            } else {
-                                                println!("  🧠 Turn saved to Engram memory");
+                            let llm_result: Result<String, String> = rt.block_on(async {
+                                let client = reqwest::Client::builder()
+                                    .timeout(std::time::Duration::from_secs(120))
+                                    .build()
+                                    .map_err(|e| format!("Client: {}", e))?;
+
+                                let response = client
+                                    .post(&url)
+                                    .header("Authorization", format!("Bearer {}", config.openai_api_key))
+                                    .header("Content-Type", "application/json")
+                                    .json(&llm_request)
+                                    .send()
+                                    .await
+                                    .map_err(|e| format!("Send: {}", e))?;
+
+                                let mut full = String::new();
+                                let mut stream = response.bytes_stream();
+                                while let Some(chunk) = stream.next().await {
+                                    let chunk = match chunk {
+                                        Ok(c) => c,
+                                        Err(e) => { eprintln!("  ⚠️ LLM stream: {}", e); break; }
+                                    };
+                                    let text = String::from_utf8_lossy(&chunk);
+                                    for line in text.lines() {
+                                        let line = line.trim();
+                                        if line.is_empty() || line == "data: [DONE]" { continue; }
+                                        if let Some(json_str) = line.strip_prefix("data: ") {
+                                            if let Ok(choice) = serde_json::from_str::<serde_json::Value>(json_str) {
+                                                if let Some(delta) = choice["choices"][0]["delta"]["content"].as_str() {
+                                                    if !delta.is_empty() {
+                                                        full.push_str(delta);
+                                                        // Emit each token to HUD in real-time
+                                                        let _ = emit_to_window(&app_handle, "suggestion-stream",
+                                                            SuggestionPayload { text: delta.to_string() });
+                                                        print!("{}", delta);
+                                                        use std::io::Write;
+                                                        std::io::stdout().flush().ok();
+                                                    }
+                                                }
                                             }
                                         }
                                     }
+                                }
+                                Ok::<String, String>(full)
+                            });
+
+                            match llm_result {
+                                Ok(response) => {
+                                    println!();
+                                    println!("  🤖 IA: {}", response);
+                                    emit_to_window(&app_handle, "suggestion-update",
+                                        SuggestionPayload { text: response.clone() });
+                                    conversation.push(ChatMessage {
+                                        role: "assistant".to_string(),
+                                        content: response.clone(),
+                                    });
+
+                                    // Store the turn to Engram if in interview mode
+                                    if let Ok(session) = interview_session.lock() {
+                                        if let Some(interview) = session.as_ref() {
+                                            if let Ok(memory) = memory.lock() {
+                                                if let Err(e) = rt.block_on(memory.save_turn(&transcription_for_engram, &response)) {
+                                                    eprintln!("  ⚠️ Engram turn save failed: {}", e);
+                                                } else {
+                                                    println!("  🧠 Turn saved to Engram memory");
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    eprintln!("  ❌ LLM streaming failed: {}", e);
                                 }
                             }
                         }
                     }
                 }
                 vad::VadEvent::Silence => {
-                    if is_capturing { speech_buffer.extend_from_slice(&chunk.samples); }
+                    if is_capturing {
+                        speech_buffer.extend_from_slice(&chunk.samples);
+
+                        // Partial transcription every ~2s of speech accumulation
+                        // Emit partial transcription to HUD so user sees text live
+                        let sample_rate = chunk.sample_rate;
+                        let partial_interval = sample_rate as usize; // 1s at current rate
+                        if speech_buffer.len() >= sample_rate as usize * 2
+                            && speech_buffer.len() - last_partial_pos >= partial_interval
+                        {
+                            last_partial_pos = speech_buffer.len();
+
+                            let partial_buf = speech_buffer.clone();
+                            let cfg = config.clone();
+                            let ah = app_handle.clone();
+                            let sr = sample_rate;
+                            let _ = std::thread::Builder::new()
+                                .name("stt-partial".into())
+                                .spawn(move || {
+                                    if let Ok(wav) = stt::pcm_to_wav(&partial_buf, sr) {
+                                        if let Ok(text) = stt::transcribe_local_sync(&cfg, &wav) {
+                                            let trimmed = text.trim().to_string();
+                                            if !trimmed.is_empty() {
+                                                diag!("[DIAG] Partial STT OK: {}", &trimmed[..80.min(trimmed.len())]);
+                                                emit_to_window(&ah, "partial-transcription",
+                                                    TranscriptionPayload { text: trimmed });
+                                            }
+                                        }
+                                    }
+                                });
+                        }
+                    }
                 }
             }
         }

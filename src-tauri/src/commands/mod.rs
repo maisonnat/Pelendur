@@ -5,4 +5,6 @@ pub mod graph;
 pub mod interview;
 pub mod knowledge;
 pub mod practice;
+#[cfg(feature = "testing")]
+pub mod testing;
 pub mod ui;

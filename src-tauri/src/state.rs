@@ -42,6 +42,8 @@ pub struct AppState {
     pub memory: Arc<Mutex<ConversationMemory>>,
     #[cfg(feature = "parakeet")]
     pub parakeet_model: Arc<Mutex<Option<ghostai_pilot::parakeet::ParakeetModel>>>,
+    #[cfg(feature = "testing")]
+    pub test_metrics: Arc<Mutex<TestMetrics>>,
 }
 
 #[derive(Serialize, Clone)]
@@ -58,4 +60,26 @@ pub struct AudioDevice {
     pub index: usize,
     pub name: String,
     pub label: String,
+}
+
+// ─── Testing Infrastructure (feature = "testing") ────────────
+
+#[derive(Serialize, Clone, Default)]
+pub struct TestMetrics {
+    pub stt_latency_ms: Vec<(String, u64)>,
+    pub pipeline_count: u64,
+    pub capture_mode: String,
+    pub uptime_seconds: u64,
+    pub transcription_count: u64,
+    pub errors: Vec<String>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct HudState {
+    pub capture_mode: String,
+    pub is_locked: bool,
+    pub is_minimal: bool,
+    pub interview_active: bool,
+    pub last_transcript: String,
+    pub last_suggestion: String,
 }

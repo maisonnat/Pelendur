@@ -103,11 +103,24 @@ document.addEventListener('DOMContentLoaded', () => {
     // Listen for suggestions
     await listen('suggestion-update', (event) => {
       console.log('JS Received Suggestion:', event.payload.text);
+      streamBuffer = '';  // Reset streaming buffer
+      mainSuggestion.classList.remove('pl-streaming');
       updateSuggestion(event.payload.text);
       // Store suggestion text in Rust state for Ctrl+E shortcut
       invoke('update_suggestion_text', { text: event.payload.text }).catch(e => 
         console.error('Failed to update suggestion text:', e)
       );
+    });
+
+    // Streaming LLM tokens — shows text progressively while generating
+    let streamBuffer = '';
+    await listen('suggestion-stream', (event) => {
+      const token = event.payload?.text || '';
+      if (!token) return;
+      streamBuffer += token;
+      // Show progressive text with blinking cursor
+      mainSuggestion.textContent = streamBuffer + ' ▌';
+      mainSuggestion.classList.add('pl-streaming');
     });
 
     let lastPartialText = '';
@@ -118,16 +131,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!text || text === lastPartialText) return;
       lastPartialText = text;
       partialDiv.textContent = text;
-      partialDiv.classList.remove('partial-hidden');
-      partialDiv.classList.add('partial-visible');
+      partialDiv.classList.remove('pl-partial-hidden');
+      partialDiv.classList.add('pl-partial-visible');
     });
 
     await listen('speech-start', () => {
       if (!partialDiv) return;
       lastPartialText = '';
-      partialDiv.innerHTML = '<span class="listening-indicator">\u{1F399} Listening...</span>';
-      partialDiv.classList.remove('partial-hidden');
-      partialDiv.classList.add('partial-visible');
+      partialDiv.innerHTML = '<span class="pl-listening-indicator">\u{1F399} Listening...</span>';
+      partialDiv.classList.remove('pl-partial-hidden');
+      partialDiv.classList.add('pl-partial-visible');
     });
 
     // Listen for global lock toggle
@@ -142,7 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const hudContainer = document.getElementById('hud-container');
       const isMinimal = event.payload;
       hudContainer.classList.toggle('minimal', isMinimal);
-      minimalBtn.classList.toggle('active', isMinimal);
+      minimalBtn.classList.toggle('pl-btn--active', isMinimal);
     });
 
     // Listen for interview state changes
@@ -165,6 +178,43 @@ document.addEventListener('DOMContentLoaded', () => {
       console.log('TTS Status:', event.payload);
       showTtsStatus(event.payload);
     });
+
+    // Listen for system status updates
+    await listen('system-status', (event) => {
+      const data = event.payload;
+      const statusBar = document.getElementById('pl-system-status');
+      if (!statusBar) return;
+
+      // Update each component status
+      ['stt', 'llm', 'kg'].forEach(component => {
+        const item = statusBar.querySelector(`[data-component="${component}"]`);
+        if (!item) return;
+        const dot = item.querySelector('.pl-status-dot');
+        if (!dot) return;
+
+        const status = data[component] || 'loading';
+        dot.className = 'pl-status-dot';
+
+        if (status === 'ready') {
+          dot.classList.add('pl-status-dot--recording');
+          dot.style.animation = 'none';
+        } else if (status === 'error') {
+          dot.classList.add('pl-status-dot--error');
+          dot.style.animation = 'none';
+        } else {
+          // loading — keep the pulse animation from CSS
+          dot.classList.add('pl-status-dot--idle');
+        }
+      });
+
+      // If everything is ready, fade out the status bar
+      const allReady = ['stt', 'llm', 'kg'].every(c => {
+        const s = data[c] || '';
+        return s === 'ready';
+      });
+      statusBar.classList.toggle('pl-system-status--loading', !allReady);
+      statusBar.classList.toggle('pl-system-status--ready', allReady);
+    });
   }
 
   // ─── Interview Mode ────────────────────────────────────────────────────
@@ -173,9 +223,8 @@ document.addEventListener('DOMContentLoaded', () => {
     state.interviewActive = true;
     state.interviewStartTime = startedAt ? new Date(startedAt) : new Date();
     interviewBtn.textContent = '⏹️';
-    interviewBtn.classList.add('active');
+    interviewBtn.classList.add('pl-btn--interview-active');
     interviewBtn.title = 'End Interview';
-    interviewBtn.style.borderColor = '#ff4444';
     interviewCompanyDisplay.textContent = company || 'Unknown';
     interviewStatusBar.classList.remove('hidden');
     mainSuggestion.textContent = `🎙️ Interview Started at ${company}. Good luck!`;
@@ -190,9 +239,8 @@ document.addEventListener('DOMContentLoaded', () => {
     state.interviewActive = false;
     state.interviewStartTime = null;
     interviewBtn.textContent = '🎙️';
-    interviewBtn.classList.remove('active');
+    interviewBtn.classList.remove('pl-btn--interview-active');
     interviewBtn.title = 'Start Interview Mode';
-    interviewBtn.style.borderColor = '';
     interviewStatusBar.classList.add('hidden');
     if (state.interviewTickInterval) {
       clearInterval(state.interviewTickInterval);
@@ -236,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         companies.forEach(c => {
           const item = document.createElement('div');
-          item.className = 'company-item';
+          item.className = 'pl-company-item';
           const industry = c.industry ? ` <span class="company-industry">${c.industry}</span>` : '';
           item.innerHTML = `<span class="company-name">${escapeHtml(c.name)}</span>${industry}`;
           item.onclick = () => startInterview(c.name);
@@ -361,20 +409,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     if (partialDiv) {
-      partialDiv.classList.remove('partial-visible');
-      partialDiv.classList.add('partial-hidden');
+      partialDiv.classList.remove('pl-partial-visible');
+      partialDiv.classList.add('pl-partial-hidden');
       partialDiv.textContent = '';
     }
 
     const item = document.createElement('div');
-    item.className = 'transcription-item';
+    item.className = 'pl-transcription';
     
     const isMe = text.length < 25;
     if (isMe) {
-      item.classList.add('me');
+      item.classList.add('pl-transcription--me');
       item.textContent = `• ${text}`;
     } else {
-      item.classList.add('interviewer');
+      item.classList.add('pl-transcription--interviewer');
       item.textContent = `Q: ${text}`;
     }
 
@@ -389,7 +437,7 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/STAR \d+:/g, '<strong>💡 Pro Tip:</strong>')
       .replace(/Technical tip:/g, '<strong>🛠 Tech:</strong>')
       .replace(/Caution:/g, '<strong>⚠️ Caution:</strong>');
-      
+    
     mainSuggestion.innerHTML = formattedText;
 
     const transcription = state.conversationHistory.join(' ');
@@ -519,7 +567,7 @@ document.addEventListener('DOMContentLoaded', () => {
     processModal.classList.remove('hidden');
     modalOverlay.classList.remove('hidden');
     
-    processList.innerHTML = '<div class="process-item">Escaneando...</div>';
+    processList.innerHTML = '<div class="pl-process-item">Escaneando...</div>';
     try {
       const devices = await invoke('get_audio_devices');
       const processes = await invoke('get_audio_processes');
@@ -528,38 +576,38 @@ document.addEventListener('DOMContentLoaded', () => {
       
       // Dual mode: Sistema + Micrófono
       const dualItem = document.createElement('div');
-      dualItem.className = 'process-item dual-mode recommended';
-      dualItem.innerHTML = '<span>🎙️ Sistema + Micrófono <span class="badge-recommended">Recomendada</span></span>';
+      dualItem.className = 'pl-process-item pl-process-item--dual';
+      dualItem.innerHTML = '<span>🎙️ Sistema + Micrófono <span class="pl-badge-recommended">Recomendada</span></span>';
       dualItem.onclick = () => selectSource(null, null, 'dual');
       processList.appendChild(dualItem);
 
       const deviceHeader = document.createElement('div');
-      deviceHeader.className = 'process-header';
+      deviceHeader.className = 'pl-process-header';
       deviceHeader.innerHTML = '<strong>Micrófonos</strong>';
       processList.appendChild(deviceHeader);
 
       devices.forEach(d => {
         const item = document.createElement('div');
-        item.className = 'process-item';
+        item.className = 'pl-process-item';
         item.innerHTML = `<span>${d.label} ${d.name}</span>`;
         item.onclick = () => selectSource(null, d.index);
         processList.appendChild(item);
       });
 
       const appHeader = document.createElement('div');
-      appHeader.className = 'process-header';
+      appHeader.className = 'pl-process-header';
       appHeader.innerHTML = '<strong>Aplicaciones</strong>';
       processList.appendChild(appHeader);
 
       processes.forEach(p => {
         const item = document.createElement('div');
-        item.className = 'process-item';
+        item.className = 'pl-process-item';
         item.innerHTML = `<span>${p.name}</span> <span class="pid">PID: ${p.pid}</span>`;
         item.onclick = () => selectSource(p.pid, null);
         processList.appendChild(item);
       });
     } catch (err) {
-      processList.innerHTML = `<div class="process-item">Error: ${err}</div>`;
+      processList.innerHTML = '<div class="pl-process-item">Error: ' + err + '</div>';
     }
   });
 
