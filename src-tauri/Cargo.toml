@@ -4,9 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["audio", "parakeet"]
+default = ["audio"]
 audio = ["ghostai-pilot/audio"]
-parakeet = ["ghostai-pilot/parakeet"]
 
 [build-dependencies]
 tauri-build = { version = "2.0.0", features = [] }
@@ -18,7 +17,7 @@ tauri-plugin-global-shortcut = "2.3.1"
 window-vibrancy = "0.7.1"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-ghostai-pilot = { path = "..", features = ["audio", "parakeet"] }
+ghostai-pilot = { path = ".." }
 dotenvy = "0.15"
 tokio = { version = "1", features = ["full"] }
 chrono = "0.4"
