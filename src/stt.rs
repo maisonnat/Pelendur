@@ -353,13 +353,14 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
 #[cfg(feature = "parakeet")]
 pub fn transcribe_parakeet_sync(model: &mut ParakeetModel, samples: Vec<f32>) -> Result<String> {
     let start = std::time::Instant::now();
-    // Resample to 16kHz if needed (3:1 decimation for 48kHz → 16kHz)
-    let samples = if samples.len() > 16000 * 30 {
-        // More than 30 seconds - take every 3rd sample (simple decimation)
+    // Resample to 16kHz: if >16000 samples, it's likely 48kHz, decimate 3:1
+    let samples = if samples.len() > 16000 * 2 {
         samples.into_iter().step_by(3).collect::<Vec<f32>>()
     } else {
         samples
     };
+    tracing::debug!("Parakeet infer: {} input → {} after 16kHz decimation", 
+        std::time::Instant::now().duration_since(start).as_millis(), samples.len());
     let result = model
         .transcribe_samples(samples)
         .map_err(|e| anyhow::anyhow!("Parakeet inference failed: {}", e))?;

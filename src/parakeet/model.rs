@@ -36,9 +36,13 @@ impl ParakeetModel {
     ///
     /// When `quantized` is true, prefers `.int8.onnx` variants when present.
     pub fn new(model_dir: &Path, quantized: bool) -> Result<Self> {
-        let encoder = Self::init_session(model_dir, "encoder-model", None, quantized)?;
-        let decoder_joint = Self::init_session(model_dir, "decoder_joint-model", None, quantized)?;
-        let preprocessor = Self::init_session(model_dir, "nemo128", None, false)?;
+        let num_cores = std::thread::available_parallelism()
+            .map(|n| n.get())
+            .unwrap_or(4);
+        tracing::info!("Parakeet using {} physical cores (intra_op_threads)", num_cores);
+        let encoder = Self::init_session(model_dir, "encoder-model", Some(num_cores), quantized)?;
+        let decoder_joint = Self::init_session(model_dir, "decoder_joint-model", Some(num_cores), quantized)?;
+        let preprocessor = Self::init_session(model_dir, "nemo128", Some(1), false)?;
         let (vocab, blank_idx) = Self::load_vocab(model_dir)?;
         let vocab_size = vocab.len();
 
@@ -90,7 +94,7 @@ impl ParakeetModel {
         if let Some(threads) = intra_threads {
             builder = builder
                 .with_intra_threads(threads)?
-                .with_inter_threads(threads)?;
+                .with_inter_threads(1)?;  // inter_op=1 prevents thread contention
         }
 
         let session = builder.commit_from_file(&model_path)?;
