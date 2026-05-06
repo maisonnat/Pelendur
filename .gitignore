@@ -69,3 +69,4 @@ ui/ui-profile/
 
 # Generated schemas
 src-tauri/gen/schemas/linux-schema.json
+test_audio.wav
