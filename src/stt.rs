@@ -349,9 +349,17 @@ async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
 
 /// Transcribe using Parakeet ONNX model (called from dedicated inference thread).
 /// Receives raw f32 samples directly — no WAV conversion needed.
+/// Automatically resamples to 16kHz if needed (Parakeet expects 16kHz input).
 #[cfg(feature = "parakeet")]
 pub fn transcribe_parakeet_sync(model: &mut ParakeetModel, samples: Vec<f32>) -> Result<String> {
     let start = std::time::Instant::now();
+    // Resample to 16kHz if needed (3:1 decimation for 48kHz → 16kHz)
+    let samples = if samples.len() > 16000 * 30 {
+        // More than 30 seconds - take every 3rd sample (simple decimation)
+        samples.into_iter().step_by(3).collect::<Vec<f32>>()
+    } else {
+        samples
+    };
     let result = model
         .transcribe_samples(samples)
         .map_err(|e| anyhow::anyhow!("Parakeet inference failed: {}", e))?;
