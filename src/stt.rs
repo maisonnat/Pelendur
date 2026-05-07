@@ -2,12 +2,13 @@ use crate::config::{Config, SttProvider};
 use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::io::Cursor;
-#[cfg(not(feature = "parakeet"))]
-use std::process::{Command, Stdio};
-#[cfg(target_os = "windows")]
-use std::os::windows::process::CommandExt;
+use std::sync::{Mutex, OnceLock};
+use std::sync::mpsc;
 use std::time::Instant;
+use tokio::sync::broadcast;
 use tracing::{debug, info, warn};
+use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
+
 /// Append a diagnostic line to pelendur-pipe.log (works inside spawn_blocking)
 #[cfg(not(feature = "parakeet"))]
 fn diag_log(msg: &str) {
@@ -19,9 +20,6 @@ fn diag_log(msg: &str) {
 
 #[cfg(feature = "parakeet")]
 use crate::parakeet::ParakeetModel;
-use std::sync::{Mutex, OnceLock};
-use std::sync::mpsc;
-use tokio::sync::broadcast;
 
 #[cfg(feature = "parakeet")]
 static PARAKEET_MODEL: OnceLock<Mutex<ParakeetModel>> = OnceLock::new();
@@ -113,38 +111,108 @@ pub fn pcm_to_wav(samples: &[f32], sample_rate: u32) -> Result<Vec<u8>> {
     Ok(cursor.into_inner())
 }
 
+/// Apply silence suppression to audio samples.
+/// Removes low-energy segments (background noise) between words
+/// while preserving word boundaries with a small hangover.
+/// Improves STT accuracy in environments with keyboard noise,
+/// traffic, or air conditioning.
+///
+/// Parameters:
+/// - `samples`: PCM f32 samples in [-1.0, 1.0] range
+/// - `sample_rate`: sample rate in Hz (e.g. 16000, 48000)
+/// - `threshold`: RMS energy threshold (default 0.01 ≈ -40dB);
+///   frames below this are considered silence
+pub fn apply_silence_suppression(samples: &[f32], sample_rate: u32, threshold: f32) -> Vec<f32> {
+    const FRAME_MS: u32 = 30;          // 30ms frames for energy computation
+    const HANGOVER_FRAMES: usize = 4;  // ~120ms padding at word edges
+
+    let frame_size = (sample_rate * FRAME_MS / 1000) as usize;
+    if frame_size == 0 || samples.len() < frame_size {
+        return samples.to_vec();
+    }
+
+    let num_frames = samples.len() / frame_size;
+    let mut is_active = vec![false; num_frames];
+
+    // 1. Compute RMS energy per frame
+    for i in 0..num_frames {
+        let start = i * frame_size;
+        let end = (start + frame_size).min(samples.len());
+        let frame = &samples[start..end];
+        let rms = (frame.iter().map(|s| s * s).sum::<f32>() / frame.len() as f32).sqrt();
+        is_active[i] = rms > threshold;
+    }
+
+    // 2. Forward pass: extend active regions (hangover at word endings)
+    let mut extended = is_active.clone();
+    for i in 0..num_frames {
+        if is_active[i] {
+            for j in 1..=HANGOVER_FRAMES {
+                if i + j < num_frames {
+                    extended[i + j] = true;
+                }
+            }
+        }
+    }
+
+    // 3. Backward pass: fill short gaps between words (< ~240ms of silence)
+    let mut final_active = extended.clone();
+    for i in 0..num_frames {
+        if !extended[i] {
+            // Check distance to nearest active frame before and after
+            let distance_before = (1..=HANGOVER_FRAMES * 2)
+                .find(|j| i >= *j && extended[i - j])
+                .unwrap_or(usize::MAX);
+            let distance_after = (1..=HANGOVER_FRAMES * 2)
+                .find(|j| i + j < num_frames && extended[i + j])
+                .unwrap_or(usize::MAX);
+            // Fill if it's a short breath pause between words
+            if distance_before != usize::MAX
+                && distance_after != usize::MAX
+                && distance_before + distance_after <= HANGOVER_FRAMES * 2
+            {
+                final_active[i] = true;
+            }
+        }
+    }
+
+    // 4. Extract only the active frames
+    let mut result = Vec::with_capacity(samples.len());
+    for i in 0..num_frames {
+        if final_active[i] {
+            let start = i * frame_size;
+            let end = (start + frame_size).min(samples.len());
+            result.extend_from_slice(&samples[start..end]);
+        }
+    }
+
+    // Log compression ratio for diagnostics
+    let compression = if samples.len() > 0 {
+        ((samples.len() - result.len()) as f64 / samples.len() as f64 * 100.0) as u32
+    } else {
+        0
+    };
+    if compression > 0 {
+        debug!("silence suppression: {}% compression ({} -> {})",
+            compression, samples.len(), result.len());
+    }
+
+    result
+}
+
 // ============================================================
-// Local whisper.cpp via CLI — SYNCHRONOUS (no tokio)
+// whisper-rs — native Rust bindings (no subprocess)
 // ============================================================
 
-/// Transcribe using local whisper.cpp CLI — fully synchronous.
-/// No tokio involvement. Call from a std::thread directly.
-#[cfg(not(feature = "parakeet"))]
-pub fn transcribe_local_sync(config: &Config, audio_wav: &[u8]) -> Result<String> {
-    #[cfg(target_os = "windows")]
-    const CREATE_NO_WINDOW: u32 = 0x08000000;
+static WHISPER_RS_CTX: OnceLock<Mutex<WhisperContext>> = OnceLock::new();
 
-    let start = Instant::now();
-
-    let whisper_bin = find_whisper_binary()?;
-    let temp_dir = std::env::temp_dir();
-
-    let temp_wav_name = format!(
-        "pelendur_audio_{}.wav",
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .map(|d| d.as_nanos())
-            .unwrap_or(0)
-    );
-    let temp_wav = temp_dir.join(&temp_wav_name);
-    let txt_file = temp_dir.join(format!("{}.txt", temp_wav_name));
-
-    // Write temp WAV file
-    std::fs::write(&temp_wav, audio_wav).context("Failed to write temp WAV file")?;
-
-    // Validate model path exists
-    let model_path = &config.whisper_model_path;
-    if !std::path::Path::new(model_path).exists() {
+/// Initialize whisper-rs model globally (call once at startup).
+/// Loads the GGML model into memory and keeps it hot for all
+/// subsequent transcriptions. Eliminates the ~50ms subprocess
+/// startup overhead per STT call (subprocess whisper-cli.exe is gone).
+pub fn init_whisper_rs(model_path: &str) -> Result<()> {
+    let path = std::path::Path::new(model_path);
+    if !path.exists() {
         anyhow::bail!(
             "Whisper model not found at: {}\n\
              Download it with:\n\
@@ -153,91 +221,89 @@ pub fn transcribe_local_sync(config: &Config, audio_wav: &[u8]) -> Result<String
             model_path
         );
     }
+    let ctx = WhisperContext::new_with_params(model_path, WhisperContextParameters::default())
+        .map_err(|e| anyhow::anyhow!(
+            "Failed to load whisper-rs model from {}: {}", model_path, e))?;
+    WHISPER_RS_CTX
+        .set(Mutex::new(ctx))
+        .map_err(|_| anyhow::anyhow!("whisper-rs already initialized"))?;
+    info!("whisper-rs model loaded: {} (exists={})", model_path, path.exists());
+    Ok(())
+}
 
-    let threads = num_cpus().min(4);
-    let temp_wav_str = temp_wav
-        .to_str()
-        .context("Temp WAV path contains non-UTF8 characters")?;
+/// Get a reference to the global whisper-rs model context.
+fn get_whisper_rs_ctx() -> Result<&'static Mutex<WhisperContext>> {
+    WHISPER_RS_CTX
+        .get()
+        .ok_or_else(|| anyhow::anyhow!(
+            "whisper-rs not initialized. Call init_whisper_rs() first."
+        ))
+}
 
-    // Use std::process::Command — blocking, no tokio
-    let mut cmd = std::process::Command::new(&whisper_bin);
-    cmd.args([
-        "-m",
-        model_path,
-        "-f",
-        temp_wav_str,
-        "-l",
-        &config.whisper_language,
-        "--no-timestamps",
-        "-t",
-        &threads.to_string(),
-        "--output-txt",
-        "--output-file",
-        temp_wav_str,
-    ])
-    .stdout(Stdio::piped())
-    .stderr(Stdio::piped());
+/// Transcribe audio using whisper-rs native bindings — fully synchronous.
+/// No subprocess overhead. The model is loaded once at startup and reused
+/// for every call. Call from a std::thread directly.
+#[cfg(not(feature = "parakeet"))]
+pub fn transcribe_local_sync(config: &Config, audio_wav: &[u8]) -> Result<String> {
+    let start = Instant::now();
 
-    #[cfg(target_os = "windows")]
-    cmd.creation_flags(CREATE_NO_WINDOW);
+    // Decode WAV bytes to f32 PCM samples
+    let mut reader = hound::WavReader::new(Cursor::new(audio_wav))
+        .context("Failed to read WAV for whisper-rs")?;
+    let samples: Vec<f32> = reader
+        .samples::<i16>()
+        .filter_map(|s| s.ok())
+        .map(|s| s as f32 / i16::MAX as f32)
+        .collect();
 
-    let output = cmd.output()
-        .with_context(|| {
-            format!(
-                "Failed to run whisper-cli at: {}",
-                whisper_bin.display()
-            )
-        })?;
+    // Get the global model context (loaded once at startup)
+    let ctx = get_whisper_rs_ctx()?;
+    let mut ctx = ctx.lock()
+        .map_err(|e| anyhow::anyhow!("whisper-rs mutex poisoned: {}", e))?;
 
-    // Read the text output file (whisper-cli adds .txt suffix to the --output-file path)
-    let text = if txt_file.exists() {
-        let content = std::fs::read_to_string(&txt_file)
-            .context("Failed to read whisper output")?;
-        let _ = std::fs::remove_file(&txt_file);
-        content
-    } else {
-        // Fallback: parse stdout
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
+    // Configure inference parameters — matches what whisper-cli did
+    let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
+    params.set_n_threads(num_cpus().min(4).try_into().unwrap());
+    params.set_language(Some(&config.whisper_language));
+    params.set_no_timestamps(true);
+    params.set_suppress_non_speech_tokens(true);
 
-        if !output.status.success() {
-            debug!("whisper-cli stderr: {}", stderr);
+    // Create a computation state from the model context
+    let mut state = ctx.create_state()
+        .map_err(|e| anyhow::anyhow!("whisper-rs create_state failed: {}", e))?;
+    // Drop the mutex lock — state is fully independent after creation
+    drop(ctx);
+
+    // Run inference (this is where the real work happens)
+    state.full(params, &samples)
+        .map_err(|e| anyhow::anyhow!("whisper-rs inference failed: {}", e))?;
+
+    // Collect all transcribed segments into one string
+    let num_segments = state.full_n_segments()
+        .map_err(|e| anyhow::anyhow!("whisper-rs get segments failed: {}", e))?;
+    let mut text = String::with_capacity(1024);
+    for i in 0..num_segments {
+        let segment = state.full_get_segment_text(i)
+            .map_err(|e| anyhow::anyhow!("whisper-rs segment {} failed: {}", i, e))?;
+        if !text.is_empty() {
+            text.push(' ');
         }
-
-        stdout
-            .lines()
-            .filter_map(|line| {
-                if let Some(pos) = line.find("] ") {
-                    Some(line[pos + 2..].trim().to_string())
-                } else {
-                    let trimmed = line.trim();
-                    if !trimmed.is_empty() && !trimmed.starts_with('[') {
-                        Some(trimmed.to_string())
-                    } else {
-                        None
-                    }
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(" ")
-    };
-
-    // Clean up temp WAV
-    let _ = std::fs::remove_file(&temp_wav);
+        text.push_str(&segment);
+    }
 
     let elapsed = start.elapsed();
     let text = text.trim().to_string();
 
     if text.is_empty() {
-        debug!("whisper.cpp returned empty ({}ms)", elapsed.as_millis());
+        debug!("whisper-rs returned empty ({}ms)", elapsed.as_millis());
     } else {
-        debug!("whisper.cpp: {} ({}ms)", text, elapsed.as_millis());
+        debug!("whisper-rs: \"{}\" ({}ms)", text, elapsed.as_millis());
     }
 
     Ok(text)
 }
 
-/// Transcribe audio — routes to Groq API, z.ai API, or local whisper.cpp / Parakeet
+/// Transcribe audio — routes to Groq API, z.ai API, or local whisper-rs / Parakeet
 pub async fn transcribe(config: &Config, audio_wav: &[u8]) -> Result<String> {
     match config.stt_provider {
         SttProvider::Groq => transcribe_groq(config, audio_wav).await,
@@ -250,7 +316,7 @@ pub async fn transcribe(config: &Config, audio_wav: &[u8]) -> Result<String> {
             }
             #[cfg(not(feature = "parakeet"))]
             {
-                // whisper.cpp path — sync via spawn_blocking
+                // whisper-rs path — sync via spawn_blocking
                 let config = config.clone();
                 let wav = audio_wav.to_vec();
                 tokio::task::spawn_blocking(move || transcribe_local_sync(&config, &wav))
@@ -261,85 +327,7 @@ pub async fn transcribe(config: &Config, audio_wav: &[u8]) -> Result<String> {
     }
 }
 
-/// Find whisper-cli binary in common locations
-#[cfg(not(feature = "parakeet"))]
-fn find_whisper_binary() -> Result<std::path::PathBuf> {
-    // Check env var first
-    if let Ok(path) = std::env::var("WHISPER_BIN") {
-        let p = std::path::PathBuf::from(&path);
-        if p.exists() {
-            return Ok(p);
-        }
-    }
-
-    // Common locations
-    let candidates: Vec<String> = if cfg!(target_os = "windows") {
-        vec![
-            "whisper-cli.exe".to_string(),
-            "whisper-cli.exe".to_string(),
-            // Relative to common install locations
-            format!(
-                "{}\\whisper.cpp\\build\\bin\\Release\\whisper-cli.exe",
-                std::env::var("USERPROFILE").unwrap_or_default()
-            ),
-            format!(
-                "{}\\whisper.cpp\\build\\bin\\whisper-cli.exe",
-                std::env::var("USERPROFILE").unwrap_or_default()
-            ),
-        ]
-    } else {
-        vec![
-            "whisper-cli".to_string(),
-            "/usr/local/bin/whisper-cli".to_string(),
-            format!(
-                "{}/whisper.cpp/build/bin/whisper-cli",
-                std::env::var("HOME").unwrap_or_default()
-            ),
-        ]
-    };
-
-    for candidate in &candidates {
-        let path = std::path::PathBuf::from(candidate);
-        if path.exists() {
-            return Ok(path);
-        }
-    }
-
-    // Try `which whisper-cli` / `where whisper-cli`
-    let which_cmd = if cfg!(target_os = "windows") {
-        "where"
-    } else {
-        "which"
-    };
-    if let Ok(output) = std::process::Command::new(which_cmd)
-        .arg("whisper-cli")
-        .output()
-    {
-        let path_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if !path_str.is_empty() {
-            let path = std::path::PathBuf::from(&path_str);
-            if path.exists() {
-                return Ok(path);
-            }
-        }
-    }
-
-    anyhow::bail!(
-        "whisper-cli not found!\n\
-         \n\
-         Install whisper.cpp:\n\
-         1. git clone https://github.com/ggml-org/whisper.cpp.git\n\
-         2. cd whisper.cpp\n\
-         3. cmake -B build -DGGML_CUDA=1\n\
-         4. cmake --build build -j --config Release\n\
-         5. Download model: models/download-ggml-model.bat base.en\n\
-         \n\
-         Or set WHISPER_BIN and WHISPER_MODEL_PATH in .env"
-    )
-}
-
 /// Get number of CPUs (simple)
-#[cfg(not(feature = "parakeet"))]
 fn num_cpus() -> usize {
     std::thread::available_parallelism()
         .map(|n| n.get())
@@ -497,4 +485,55 @@ async fn transcribe_zai(config: &Config, audio_wav: &[u8]) -> Result<String> {
     let text = result.text.trim().to_string();
     debug!("z.ai STT: {}", text);
     Ok(text)
+}
+
+// ============================================================
+// Tests
+// ============================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_silence_suppression_preserves_loud_audio() {
+        let sample_rate: u32 = 16000;
+        let num_samples = (sample_rate / 5) as usize;
+        let samples: Vec<f32> = (0..num_samples)
+            .map(|i| (i as f32 * 440.0 * 2.0 * std::f32::consts::PI / sample_rate as f32).sin())
+            .collect();
+        let result = apply_silence_suppression(&samples, sample_rate, 0.01);
+        assert!(!result.is_empty(), "should not remove loud audio");
+        assert!(result.len() > samples.len() / 2, "should keep most of loud audio");
+    }
+
+    #[test]
+    fn test_silence_suppression_removes_silence() {
+        let sample_rate: u32 = 16000;
+        let samples = vec![0.0f32; sample_rate as usize];
+        let result = apply_silence_suppression(&samples, sample_rate, 0.01);
+        assert!(result.is_empty() || result.len() < 10,
+            "should remove silence, got {} samples", result.len());
+    }
+
+    #[test]
+    fn test_silence_suppression_short_buffer() {
+        let samples = vec![0.5f32; 10];
+        let result = apply_silence_suppression(&samples, 16000, 0.01);
+        assert_eq!(result.len(), 10, "short buffers should pass through");
+    }
+
+    #[test]
+    fn test_silence_suppression_keeps_short_pauses() {
+        let sample_rate: u32 = 16000;
+        let word = vec![0.5f32; sample_rate as usize / 4];
+        let pause = vec![0.0f32; sample_rate as usize / 10];
+        let mut samples = Vec::new();
+        samples.extend(&word);
+        samples.extend(&pause);
+        samples.extend(&word);
+        let result = apply_silence_suppression(&samples, sample_rate, 0.01);
+        assert!(!result.is_empty(), "should keep speech with short pauses");
+        assert!(result.len() > word.len(), "should keep at least one word");
+    }
 }

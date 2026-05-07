@@ -212,27 +212,34 @@ pub async fn start_capture(
                     diag!("[DIAG] VAD SpeechEnd (buf={}samp, {}Hz)", speech_buffer.len(), chunk.sample_rate);
                     if is_capturing && !speech_buffer.is_empty() {
                         is_capturing = false;
-                        let wav_bytes = match stt::pcm_to_wav(&speech_buffer, chunk.sample_rate) {
+
+                        // Apply silence suppression to remove background noise between words
+                        // Threshold 0.01 ≈ -40dB: removes keyboard clicks, HVAC, traffic
+                        let cleaned = stt::apply_silence_suppression(
+                            &speech_buffer, chunk.sample_rate, 0.01);
+
+                        if cleaned.len() < 8000 {
+                            diag!("[DIAG] Buffer <8k after suppression, skip");
+                            continue;
+                        }
+                        // Limit buffer to 2 seconds for fast local inference
+                        let max_samp = chunk.sample_rate as usize * 2;
+                        let final_buf = if cleaned.len() > max_samp {
+                            diag!("[DIAG] Trunc buf {} -> {}", cleaned.len(), max_samp);
+                            cleaned[..max_samp].to_vec()
+                        } else {
+                            cleaned
+                        };
+
+                        diag!("[DIAG] Calling STT... buf={}samp {}Hz", final_buf.len(), chunk.sample_rate);
+
+                        let wav_bytes = match stt::pcm_to_wav(&final_buf, chunk.sample_rate) {
                             Ok(bytes) => bytes,
                             Err(e) => {
                                 eprintln!("WAV encoding failed: {}", e);
                                 continue;
                             }
                         };
-                        if speech_buffer.len() < 8000 {
-                            diag!("[DIAG] Buffer <8k, skip");
-                            continue;
-                        }
-                        // Limit buffer to 2 seconds for fast local inference
-                        let max_samp = chunk.sample_rate as usize * 2;
-                        if speech_buffer.len() > max_samp {
-                            diag!("[DIAG] Trunc buf {} -> {}", speech_buffer.len(), max_samp);
-                            speech_buffer.truncate(max_samp);
-                        }
-
-                        diag!("[DIAG] Calling STT... buf={}samp {}Hz", speech_buffer.len(), chunk.sample_rate);
-
-                        // Run STT in a dedicated thread with 30s timeout
                         let (tx_stt, rx_stt) = std::sync::mpsc::channel();
                         let config_stt = config.clone();
                         let wav_stt = wav_bytes.clone();

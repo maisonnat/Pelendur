@@ -104,6 +104,21 @@ fn main() {
         }
     }
 
+    // Initialize global whisper-rs STT model (used when parakeet feature is off)
+    #[cfg(not(feature = "parakeet"))]
+    {
+        let model_path = &config.whisper_model_path;
+        if std::path::Path::new(model_path).exists() {
+            match ghostai_pilot::stt::init_whisper_rs(model_path) {
+                Ok(()) => println!("  ✅ whisper-rs model loaded"),
+                Err(e) => eprintln!("  ⚠️  whisper-rs init failed: {}", e),
+            }
+        } else {
+            eprintln!("  ⚠️  whisper-rs model not found: {:?}", model_path);
+            eprintln!("       Download: cd models && download-ggml-model.bat base.en");
+        }
+    }
+
     tauri::Builder::default()
         .manage(AppState {
             config,
