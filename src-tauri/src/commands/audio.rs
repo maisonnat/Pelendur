@@ -83,6 +83,7 @@ pub async fn start_capture(
     let streams_lock = state.active_streams.clone();
     let interview_session = state.interview_session.clone();
     let memory = state.memory.clone();
+    let ollama_available = state.ollama_available.clone();
 
     {
         let mut streams = streams_lock.lock().map_err(|e| e.to_string())?;
@@ -306,59 +307,42 @@ pub async fn start_capture(
 
                             // --- Streaming LLM response to HUD ---
                             // Shows tokens progressively instead of waiting for full response
-                            let url = format!("{}/chat/completions",
-                                config.openai_base_url.trim_end_matches('/'));
-                            let llm_request = serde_json::json!({
-                                "model": config.openai_model,
-                                "messages": &*conversation,
-                                "stream": true,
-                                "max_tokens": 500,
-                            });
-
+                            // Falls back to local Ollama if cloud provider fails
                             let llm_result: Result<String, String> = rt.block_on(async {
-                                let client = reqwest::Client::builder()
-                                    .timeout(std::time::Duration::from_secs(120))
-                                    .build()
-                                    .map_err(|e| format!("Client: {}", e))?;
+                                // Try primary LLM provider (cloud or configured Ollama)
+                                let result = stream_llm_response(
+                                    &app_handle,
+                                    &config.openai_base_url,
+                                    &config.openai_api_key,
+                                    &config.openai_model,
+                                    &conversation,
+                                ).await;
 
-                                let response = client
-                                    .post(&url)
-                                    .header("Authorization", format!("Bearer {}", config.openai_api_key))
-                                    .header("Content-Type", "application/json")
-                                    .json(&llm_request)
-                                    .send()
-                                    .await
-                                    .map_err(|e| format!("Send: {}", e))?;
+                                // If primary fails and Ollama is available locally, fallback
+                                if result.is_err() {
+                                    let do_fallback = ollama_available.lock()
+                                        .map(|l| *l && !config.openai_base_url.contains("localhost:11434"))
+                                        .unwrap_or(false);
 
-                                let mut full = String::new();
-                                let mut stream = response.bytes_stream();
-                                while let Some(chunk) = stream.next().await {
-                                    let chunk = match chunk {
-                                        Ok(c) => c,
-                                        Err(e) => { eprintln!("  ⚠️ LLM stream: {}", e); break; }
-                                    };
-                                    let text = String::from_utf8_lossy(&chunk);
-                                    for line in text.lines() {
-                                        let line = line.trim();
-                                        if line.is_empty() || line == "data: [DONE]" { continue; }
-                                        if let Some(json_str) = line.strip_prefix("data: ") {
-                                            if let Ok(choice) = serde_json::from_str::<serde_json::Value>(json_str) {
-                                                if let Some(delta) = choice["choices"][0]["delta"]["content"].as_str() {
-                                                    if !delta.is_empty() {
-                                                        full.push_str(delta);
-                                                        // Emit each token to HUD in real-time
-                                                        let _ = emit_to_window(&app_handle, "suggestion-stream",
-                                                            SuggestionPayload { text: delta.to_string() });
-                                                        print!("{}", delta);
-                                                        use std::io::Write;
-                                                        std::io::stdout().flush().ok();
-                                                    }
-                                                }
-                                            }
-                                        }
+                                    if do_fallback {
+                                        diag!("Primary LLM failed, falling back to Ollama");
+                                        emit_to_window(&app_handle, "suggestion-stream",
+                                            SuggestionPayload {
+                                                text: "\n[⚡ Local AI activado]\n".to_string(),
+                                            });
+                                        stream_llm_response(
+                                            &app_handle,
+                                            "http://localhost:11434/v1",
+                                            "ollama",
+                                            &config.openai_model,
+                                            &conversation,
+                                        ).await
+                                    } else {
+                                        result
                                     }
+                                } else {
+                                    result
                                 }
-                                Ok::<String, String>(full)
                             });
 
                             match llm_result {
@@ -441,4 +425,65 @@ fn emit_to_window<T: serde::Serialize + Clone>(app: &AppHandle, event: &str, pay
         println!("  ❌ Window 'main' not found for {}!", event);
         let _ = app.emit(event, payload);
     }
+}
+
+/// Stream LLM response from a provider, emitting tokens to HUD in real-time.
+/// Returns the full response text on success.
+async fn stream_llm_response(
+    app_handle: &AppHandle,
+    base_url: &str,
+    api_key: &str,
+    model: &str,
+    messages: &[ChatMessage],
+) -> Result<String, String> {
+    let url = format!("{}/chat/completions", base_url.trim_end_matches('/'));
+    let llm_request = serde_json::json!({
+        "model": model,
+        "messages": messages,
+        "stream": true,
+        "max_tokens": 500,
+    });
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(120))
+        .build()
+        .map_err(|e| format!("Client: {}", e))?;
+
+    let response = client
+        .post(&url)
+        .header("Authorization", format!("Bearer {}", api_key))
+        .header("Content-Type", "application/json")
+        .json(&llm_request)
+        .send()
+        .await
+        .map_err(|e| format!("Send: {}", e))?;
+
+    let mut full = String::new();
+    let mut stream = response.bytes_stream();
+    while let Some(chunk) = stream.next().await {
+        let chunk = match chunk {
+            Ok(c) => c,
+            Err(e) => { eprintln!("  ⚠️ LLM stream: {}", e); break; }
+        };
+        let text = String::from_utf8_lossy(&chunk);
+        for line in text.lines() {
+            let line = line.trim();
+            if line.is_empty() || line == "data: [DONE]" { continue; }
+            if let Some(json_str) = line.strip_prefix("data: ") {
+                if let Ok(choice) = serde_json::from_str::<serde_json::Value>(json_str) {
+                    if let Some(delta) = choice["choices"][0]["delta"]["content"].as_str() {
+                        if !delta.is_empty() {
+                            full.push_str(delta);
+                            emit_to_window(app_handle, "suggestion-stream",
+                                SuggestionPayload { text: delta.to_string() });
+                            print!("{}", delta);
+                            use std::io::Write;
+                            std::io::stdout().flush().ok();
+                        }
+                    }
+                }
+            }
+        }
+    }
+    Ok(full)
 }

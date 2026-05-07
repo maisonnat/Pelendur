@@ -90,6 +90,28 @@ fn main() {
         )
     ));
 
+    // Check if Ollama is running locally (TCP port check — no extra deps)
+    let ollama_available = Arc::new(Mutex::new(false));
+    {
+        let ollama_avail = ollama_available.clone();
+        std::thread::spawn(move || {
+            match std::net::TcpStream::connect_timeout(
+                &"127.0.0.1:11434".parse().unwrap(),
+                std::time::Duration::from_secs(2),
+            ) {
+                Ok(_) => {
+                    if let Ok(mut avail) = ollama_avail.lock() {
+                        *avail = true;
+                        println!("  ✅ Ollama detected at localhost:11434");
+                    }
+                }
+                Err(_) => {
+                    println!("  ⚠️  Ollama not detected (expected if running cloud LLM)");
+                }
+            }
+        });
+    }
+
     // Initialize global Parakeet STT model
     #[cfg(feature = "parakeet")]
     {
@@ -130,6 +152,7 @@ fn main() {
             active_streams: Arc::new(Mutex::new(Vec::new())),
             interview_session: Arc::new(Mutex::new(None)),
             memory,
+            ollama_available,
             #[cfg(feature = "parakeet")]
             parakeet_model: Arc::new(Mutex::new(None)),
             #[cfg(feature = "testing")]

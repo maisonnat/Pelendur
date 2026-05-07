@@ -40,6 +40,7 @@ pub struct AppState {
     pub active_streams: Arc<Mutex<Vec<StreamWrapper>>>,
     pub interview_session: Arc<Mutex<Option<InterviewSession>>>,
     pub memory: Arc<Mutex<ConversationMemory>>,
+    pub ollama_available: Arc<Mutex<bool>>,
     #[cfg(feature = "parakeet")]
     pub parakeet_model: Arc<Mutex<Option<ghostai_pilot::parakeet::ParakeetModel>>>,
     #[cfg(feature = "testing")]
