@@ -11,6 +11,7 @@ wasapi_loopback = ["wasapi", "sysinfo"]
 linux_audio = []
 parakeet = ["dep:ort", "dep:ndarray", "dep:thiserror", "dep:regex"]
 parakeet_cuda = ["parakeet", "ort/cuda"]
+cuda = ["whisper-rs/cuda"]
 
 [dependencies]
 cpal = { version = "0.15", optional = true }

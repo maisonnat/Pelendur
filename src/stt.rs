@@ -210,6 +210,9 @@ static WHISPER_RS_CTX: OnceLock<Mutex<WhisperContext>> = OnceLock::new();
 /// Loads the GGML model into memory and keeps it hot for all
 /// subsequent transcriptions. Eliminates the ~50ms subprocess
 /// startup overhead per STT call (subprocess whisper-cli.exe is gone).
+///
+/// When compiled with `--features cuda`, enables GPU acceleration
+/// (NVIDIA CUDA) on device 0 with flash attention.
 pub fn init_whisper_rs(model_path: &str) -> Result<()> {
     let path = std::path::Path::new(model_path);
     if !path.exists() {
@@ -221,7 +224,24 @@ pub fn init_whisper_rs(model_path: &str) -> Result<()> {
             model_path
         );
     }
-    let ctx = WhisperContext::new_with_params(model_path, WhisperContextParameters::default())
+
+    #[cfg(feature = "cuda")]
+    let ctx = {
+        let mut params = WhisperContextParameters::new();
+        params.use_gpu(true);
+        params.gpu_device(0);
+        params.flash_attn(true);
+        info!("whisper-rs: loading model with CUDA GPU acceleration (device 0)");
+        WhisperContext::new_with_params(model_path, params)
+    };
+
+    #[cfg(not(feature = "cuda"))]
+    let ctx = {
+        info!("whisper-rs: loading model (CPU, no GPU feature)");
+        WhisperContext::new_with_params(model_path, WhisperContextParameters::default())
+    };
+
+    let ctx = ctx
         .map_err(|e| anyhow::anyhow!(
             "Failed to load whisper-rs model from {}: {}", model_path, e))?;
     WHISPER_RS_CTX
