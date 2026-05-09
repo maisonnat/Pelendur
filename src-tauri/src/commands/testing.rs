@@ -1,7 +1,5 @@
 use crate::state::{AppState, HudState, TestMetrics};
 use ghostai_pilot::stt;
-use std::sync::Arc;
-use std::sync::Mutex;
 use tauri::State;
 
 fn uptime() -> u64 {

@@ -7,6 +7,7 @@ use tokio::sync::Mutex as TokioMutex;
 /// Wrapper to make cpal::Stream Send-safe.
 /// cpal::Stream is already Send on most platforms but not Sync.
 /// We only need to store it to keep it alive; we never access it after creation.
+#[allow(dead_code)]
 pub struct StreamWrapper(pub cpal::Stream);
 unsafe impl Send for StreamWrapper {}
 // SAFETY: StreamWrapper is never shared between threads — it's only stored
@@ -27,6 +28,7 @@ pub struct InterviewSession {
     pub company: String,
     pub company_context: String,
     pub started_at: chrono::DateTime<chrono::Utc>,
+    #[allow(dead_code)]
     pub turn_count: usize,
 }
 

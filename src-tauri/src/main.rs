@@ -62,8 +62,6 @@ fn main() {
     {
         std::env::set_var("WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS", "--remote-debugging-port=9224");
     }
-    
-    dotenvy::from_filename(".env").ok();
     let config = config::Config::from_env().expect("Failed config");
     let mut km = knowledge::personal::KnowledgeManager::new("knowledge");
     let _ = km.load_personal_profile();
@@ -161,7 +159,8 @@ fn main() {
         .setup(|app| {
             let _window = app.get_webview_window("main").unwrap();
 
-            // Emit system status to HUD
+            // Emit system status to HUD (frontend also calls get_system_status as fallback)
+            println!("  📡 Emitting system-status: ready");
             let _ = app.emit("system-status", serde_json::json!({
                 "stt": "ready",
                 "llm": "ready",
@@ -209,6 +208,8 @@ fn main() {
             commands::ui::regenerate,
             commands::ui::open_profile_window,
             commands::ui::close_app,
+            commands::ui::get_system_status,
+            commands::ui::get_readiness,
             // Knowledge search
             commands::knowledge::get_knowledge_graph_stats,
             commands::knowledge::search_knowledge,

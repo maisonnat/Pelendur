@@ -83,7 +83,7 @@ pub struct Preferencias {
 impl PersonalProfile {
     pub fn load_from_file(path: &Path) -> Result<Self> {
         let content = fs::read_to_string(path)?;
-        let profile: PersonalProfile = serde_yaml::from_str(&content)?;
+        let profile: PersonalProfile = serde_yml::from_str(&content)?;
         Ok(profile)
     }
 

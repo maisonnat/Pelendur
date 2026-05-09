@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use std::sync::mpsc;
-use tracing::{debug, info, warn};
+// tracing
 
 /// Represents a chunk of captured audio (PCM f32 samples at 16kHz)
 pub struct AudioChunk {
@@ -46,7 +46,7 @@ pub mod real {
             .map_err(|e| anyhow!("Failed to enumerate input devices: {}", e))?;
         let mut all_devices = Vec::new();
         for device in devices {
-            let name = device.name().unwrap_or_default();
+            let name = device.description().map(|d| d.name().to_string()).unwrap_or_default();
             all_devices.push((name.clone(), device));
             if name.to_lowercase().contains("loopback") {
                 return Ok(all_devices.pop().unwrap().1);
@@ -64,7 +64,7 @@ pub mod real {
             .input_devices()
             .map_err(|e| anyhow!("Failed to enumerate input devices: {}", e))?;
         for device in devices {
-            let name = device.name().unwrap_or_default();
+            let name = device.description().map(|d| d.name().to_string()).unwrap_or_default();
             if name.to_lowercase().contains("monitor") {
                 return Ok(device);
             }
@@ -78,7 +78,7 @@ pub mod real {
             .input_devices()
             .map_err(|e| anyhow!("Failed to enumerate input devices: {}", e))?;
         for device in devices {
-            let name = device.name().unwrap_or_default();
+            let name = device.description().map(|d| d.name().to_string()).unwrap_or_default();
             if name.to_lowercase().contains("blackhole") {
                 return Ok(device);
             }
@@ -97,17 +97,17 @@ pub mod real {
         let host = cpal::default_host();
         let default_input_name = host
             .default_input_device()
-            .and_then(|d| d.name().ok())
+            .and_then(|d| d.description().map(|desc| desc.name().to_string()).ok())
             .unwrap_or_default();
         let default_output_name = host
             .default_output_device()
-            .and_then(|d| d.name().ok())
+            .and_then(|d| d.description().map(|desc| desc.name().to_string()).ok())
             .unwrap_or_default();
         let mut result = Vec::new();
 
         if let Ok(output_devices) = host.output_devices() {
             for device in output_devices {
-                let name = device.name().unwrap_or_default();
+                let name = device.description().map(|d| d.name().to_string()).unwrap_or_default();
                 let lower = name.to_lowercase();
                 let is_default = name == default_output_name;
                 let label = if lower.contains("speakers") || lower.contains("altavoces") {
@@ -121,7 +121,7 @@ pub mod real {
 
         if let Ok(input_devices) = host.input_devices() {
             for device in input_devices {
-                let name = device.name().unwrap_or_default();
+                let name = device.description().map(|d| d.name().to_string()).unwrap_or_default();
                 let lower = name.to_lowercase();
                 let is_default = name == default_input_name;
                 let label = if lower.contains("micro") || lower.contains("mic") {
@@ -157,7 +157,7 @@ pub mod real {
     pub fn start_capture(device: Device) -> Result<(mpsc::Receiver<AudioChunk>, cpal::Stream)> {
         println!("  ⚙ Intentando abrir dispositivo...");
         let config = device.default_input_config()?;
-        let sample_rate = config.sample_rate().0;
+        let sample_rate = config.sample_rate();
         let channels = config.channels();
         let sample_format = config.sample_format();
         println!(

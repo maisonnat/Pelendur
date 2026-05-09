@@ -1,10 +1,8 @@
 use crate::state::AppState;
 use crate::types::*;
 use ghostai_pilot::knowledge::company::{CompanyLoader, CompanyResearch};
-use ghostai_pilot::knowledge::graph::KnowledgeGraph;
 use std::path::Path;
 use tauri::State;
-use tokio::task;
 
 // ─── Company Data for IPC ───────────────────────────────────────────────
 
@@ -110,7 +108,7 @@ pub fn load_company_research(state: State<'_, AppState>, company_name: String) -
 // ─── Get company research context for interview ──────────────────────────
 
 #[tauri::command]
-pub fn get_company_research_context(state: State<'_, AppState>, company_name: String) -> Result<String, String> {
+pub fn get_company_research_context(_state: State<'_, AppState>, company_name: String) -> Result<String, String> {
     let loader = CompanyLoader::new("knowledge");
     loader.get_interview_context(&company_name)
         .map_err(|e| format!("Failed to get research context: {}", e))

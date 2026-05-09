@@ -1,98 +1,107 @@
 #!/usr/bin/env python3
-"""Generate synthetic test audio WAV files for Pelendur STP testing.
-Uses gTTS (Google Text-to-Speech) to generate realistic interview questions at 16kHz mono WAV."""
-
-import subprocess
-import tempfile
+"""Generate comprehensive test audio for Pelendur STT pipeline testing.
+Creates WAV files at 16kHz mono in multiple languages and lengths."""
+import subprocess, tempfile, os, sys, time
 from pathlib import Path
 
 AUDIO_DIR = Path(__file__).parent / "audio"
+AUDIO_DIR.mkdir(exist_ok=True)
 
-QUESTIONS = [
-    ("what_is_your_greatest_strength.wav", "What is your greatest strength?"),
-    ("tell_me_about_yourself.wav", "Tell me about yourself"),
-    ("why_do_you_want_this_job.wav", "Why do you want this job?"),
-    ("describe_a_challenge.wav", "Describe a challenge you overcame"),
-    ("where_do_you_see_yourself.wav", "Where do you see yourself in five years?"),
+# English - short (fast tests)
+EN_SHORT = [
+    ("en_hello.wav", "Hello, how are you?"),
+    ("en_yes.wav", "Yes, that sounds good."),
+    ("en_no.wav", "No, I don't think so."),
+    ("en_test_one_two.wav", "Testing one two three."),
 ]
 
+# English - interview style
+EN_INTERVIEW = [
+    ("en_strength.wav", "My greatest strength is my ability to learn quickly and adapt to new situations."),
+    ("en_challenge.wav", "I once had to lead a team through a major software migration with very tight deadlines."),
+    ("en_teamwork.wav", "I believe in clear communication and regular check-ins to keep everyone aligned."),
+]
+
+# Spanish
+ES_SHORT = [
+    ("es_hola.wav", "Hola, ¿cómo estás?"),
+    ("es_si.wav", "Sí, estoy de acuerdo."),
+    ("es_gracias.wav", "Muchas gracias por la oportunidad."),
+]
+
+ES_INTERVIEW = [
+    ("es_fortaleza.wav", "Mi mayor fortaleza es mi capacidad para resolver problemas complejos bajo presión."),
+    ("es_experiencia.wav", "Tengo más de diez años de experiencia en ventas técnicas y gestión de cuentas."),
+]
+
+# Mixed noise floor test (silence + speech)
+SILENCE_TESTS = [
+    ("silence_500ms.wav", ""),         # pure silence
+]
+
+ALL_FILES = EN_SHORT + EN_INTERVIEW + ES_SHORT + ES_INTERVIEW + SILENCE_TESTS
+
 def generate_wav(filename: str, text: str) -> Path:
-    """Generate a 16kHz mono WAV file using gTTS + ffmpeg."""
     out_path = AUDIO_DIR / filename
     if out_path.exists():
-        print(f"  ✓ Already exists: {filename}")
+        print(f"  ✓ EXISTS: {filename} ({out_path.stat().st_size//1024}KB)")
         return out_path
 
-    # Use gTTS to generate speech, convert to 16kHz mono WAV
+    if not text:
+        # Generate pure silence WAV
+        import struct, wave
+        with wave.open(str(out_path), 'w') as wf:
+            wf.setnchannels(1)
+            wf.setsampwidth(2)  # 16-bit
+            wf.setframerate(16000)
+            # 500ms of silence
+            for _ in range(8000):
+                wf.writeframes(struct.pack('<h', 0))
+        print(f"  ✓ GENERATED: {filename} (silence)")
+        return out_path
+
     with tempfile.NamedTemporaryFile(suffix=".mp3", delete=False) as tmp:
         mp3_path = tmp.name
 
     try:
         from gtts import gTTS
-        tts = gTTS(text, lang="en", slow=False)
+        # Detect language
+        lang = "es" if any(c in text for c in "áéíóúñ¿¡") else "en"
+        # Slower speed for clearer audio
+        tts = gTTS(text=text, lang=lang, slow=False)
         tts.save(mp3_path)
-
         # Convert to 16kHz mono WAV
-        subprocess.run(
-            ["ffmpeg", "-y", "-i", mp3_path,
-             "-ar", "16000", "-ac", "1",
-             "-sample_fmt", "s16",
-             str(out_path)],
-            capture_output=True, check=True
-        )
-        size = out_path.stat().st_size
-        print(f"  ✓ Generated: {filename} ({size/1024:.1f} KB)")
-    except ImportError:
-        print("  ⚠ gtts not installed. Install with: pip install gtts")
-        print("  ⚠ Or use fallback: generate_silent_wav()")
-        return generate_silent_wav(out_path, text)
+        cmd = [
+            "ffmpeg", "-y", "-i", mp3_path,
+            "-acodec", "pcm_s16le",
+            "-ac", "1",
+            "-ar", "16000",
+            str(out_path)
+        ]
+        subprocess.run(cmd, capture_output=True, check=True)
+        kb = out_path.stat().st_size // 1024
+        duration = out_path.stat().st_size / 32000  # 16-bit mono @ 16kHz = 32000 bytes/sec
+        print(f"  ✓ GENERATED: {filename} ({kb}KB, {duration:.1f}s)")
+        return out_path
     finally:
-        Path(mp3_path).unlink(missing_ok=True)
+        os.unlink(mp3_path)
 
-    return out_path
+print(f"\n{'='*50}")
+print(f"  Generating {len(ALL_FILES)} test audio files")
+print(f"{'='*50}\n")
+total_start = time.time()
 
+for filename, text in ALL_FILES:
+    generate_wav(filename, text)
 
-def generate_silent_wav(out_path: Path, text: str) -> Path:
-    """Fallback: generate a short silent WAV (for CI without gTTS)."""
-    import struct
-    import math
+elapsed = time.time() - total_start
+print(f"\n{'='*50}")
+print(f"  Done in {elapsed:.1f}s")
+print(f"  Files in: {AUDIO_DIR}")
+print(f"{'='*50}\n")
 
-    sample_rate = 16000
-    duration = 2.0  # 2 seconds of silence
-    num_samples = int(sample_rate * duration)
-
-    with open(out_path, "wb") as f:
-        # WAV header
-        data_size = num_samples * 2  # 16-bit
-        f.write(b"RIFF")
-        f.write(struct.pack("<I", 36 + data_size))
-        f.write(b"WAVE")
-        f.write(b"fmt ")
-        f.write(struct.pack("<I", 16))  # chunk size
-        f.write(struct.pack("<H", 1))   # PCM
-        f.write(struct.pack("<H", 1))   # mono
-        f.write(struct.pack("<I", sample_rate))
-        f.write(struct.pack("<I", sample_rate * 2))  # byte rate
-        f.write(struct.pack("<H", 2))   # block align
-        f.write(struct.pack("<H", 16))  # bits per sample
-        f.write(b"data")
-        f.write(struct.pack("<I", data_size))
-        # Write silence
-        for _ in range(num_samples):
-            f.write(struct.pack("<h", 0))
-
-    size = out_path.stat().st_size
-    print(f"  ⚠ Generated silent fallback: {out_path.name} ({size/1024:.1f} KB)")
-    return out_path
-
-
-def main():
-    AUDIO_DIR.mkdir(parents=True, exist_ok=True)
-    print(f"🎤 Generating test audio files in {AUDIO_DIR}")
-    for filename, question in QUESTIONS:
-        generate_wav(filename, question)
-    print(f"\n✅ Done! {len(list(AUDIO_DIR.glob('*.wav')))} WAV files in {AUDIO_DIR}")
-
-
-if __name__ == "__main__":
-    main()
+# Verify all files
+print("Verification:")
+for f in sorted(AUDIO_DIR.glob("*.wav")):
+    dur = f.stat().st_size / 32000
+    print(f"  {f.name:35s} {f.stat().st_size//1024:4d}KB  {dur:5.1f}s")

@@ -8,22 +8,23 @@ default = ["audio"]
 audio = ["ghostai-pilot/audio"]
 testing = ["ghostai-pilot/audio"]
 cuda = ["ghostai-pilot/cuda"]
+parakeet = []
 
 [build-dependencies]
-tauri-build = { version = "2.0.0", features = [] }
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2.0.0", features = [] }
-tauri-plugin-positioner = "2.3.1"
-tauri-plugin-global-shortcut = "2.3.1"
-window-vibrancy = "0.7.1"
+tauri = { version = "2", features = [] }
+tauri-plugin-positioner = "2"
+tauri-plugin-global-shortcut = "2"
+window-vibrancy = "0.7"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 ghostai-pilot = { path = "..", default-features = false, features = ["audio"] }
 dotenvy = "0.15"
 tokio = { version = "1", features = ["full"] }
 chrono = "0.4"
-cpal = "0.15"
-reqwest = { version = "0.12", features = ["json", "stream"] }
+cpal = "0.17"
+reqwest = { version = "0.13", features = ["json", "stream", "rustls"] }
 futures-util = "0.3"
 tauri-plugin-dialog = "2"

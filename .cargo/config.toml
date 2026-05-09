@@ -1,3 +1,9 @@
 [build]
 target-dir = "target-pelendur"
 incremental = false
+
+[env]
+# whisper-rs-sys (whisper.cpp) necesita Ninja para MSVC 19.44+ con CUDA 13
+CMAKE_GENERATOR = "Ninja"
+# Suprime D8016 (C++17/C11 incompatibles) + CUB C++17 deprecation en CUDA 13
+CL = "/DCCCL_IGNORE_DEPRECATED_CPP_DIALECT"

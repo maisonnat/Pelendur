@@ -139,6 +139,7 @@ pub struct WebRtcVadDetector {
     min_speech_frames: usize,
     /// Min silence frames to trigger SpeechEnd (hangover)
     min_silence_frames: usize,
+    #[allow(dead_code)]
     /// Actual sample rate for calculating RMS fallback
     sample_rate: u32,
 }

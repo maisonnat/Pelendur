@@ -3,20 +3,9 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::io::Cursor;
 use std::sync::{Mutex, OnceLock};
-use std::sync::mpsc;
 use std::time::Instant;
-use tokio::sync::broadcast;
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
-
-/// Append a diagnostic line to pelendur-pipe.log (works inside spawn_blocking)
-#[cfg(not(feature = "parakeet"))]
-fn diag_log(msg: &str) {
-    use std::io::Write;
-    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("pelendur-pipe.log") {
-        let _ = writeln!(f, "[STT] {}", msg);
-    }
-}
 
 #[cfg(feature = "parakeet")]
 use crate::parakeet::ParakeetModel;
@@ -276,17 +265,24 @@ pub fn transcribe_local_sync(config: &Config, audio_wav: &[u8]) -> Result<String
         .map(|s| s as f32 / i16::MAX as f32)
         .collect();
 
+    // RMS energy gate — skip if audio is effectively silence (no speech)
+    let rms = (samples.iter().map(|s| s * s).sum::<f32>() / samples.len() as f32).sqrt();
+    if rms < 0.005 {
+        debug!("whisper-rs: skipped silent audio (rms={:.6})", rms);
+        return Ok(String::new());
+    }
+
     // Get the global model context (loaded once at startup)
     let ctx = get_whisper_rs_ctx()?;
-    let mut ctx = ctx.lock()
+    let ctx = ctx.lock()
         .map_err(|e| anyhow::anyhow!("whisper-rs mutex poisoned: {}", e))?;
 
     // Configure inference parameters — matches what whisper-cli did
     let mut params = FullParams::new(SamplingStrategy::Greedy { best_of: 1 });
-    params.set_n_threads(num_cpus().min(4).try_into().unwrap());
+    params.set_n_threads(num_cpus().try_into().unwrap());
     params.set_language(Some(&config.whisper_language));
     params.set_no_timestamps(true);
-    params.set_suppress_non_speech_tokens(true);
+    params.set_suppress_nst(true);
 
     // Create a computation state from the model context
     let mut state = ctx.create_state()
@@ -299,16 +295,17 @@ pub fn transcribe_local_sync(config: &Config, audio_wav: &[u8]) -> Result<String
         .map_err(|e| anyhow::anyhow!("whisper-rs inference failed: {}", e))?;
 
     // Collect all transcribed segments into one string
-    let num_segments = state.full_n_segments()
-        .map_err(|e| anyhow::anyhow!("whisper-rs get segments failed: {}", e))?;
+    let num_segments = state.full_n_segments();
     let mut text = String::with_capacity(1024);
     for i in 0..num_segments {
-        let segment = state.full_get_segment_text(i)
-            .map_err(|e| anyhow::anyhow!("whisper-rs segment {} failed: {}", i, e))?;
+        let segment_text = state.get_segment(i)
+            .ok_or_else(|| anyhow::anyhow!("whisper-rs segment {} not found", i))?
+            .to_str()
+            .map_err(|e| anyhow::anyhow!("whisper-rs segment {} UTF-8 error: {}", i, e))?;
         if !text.is_empty() {
             text.push(' ');
         }
-        text.push_str(&segment);
+        text.push_str(&segment_text);
     }
 
     let elapsed = start.elapsed();

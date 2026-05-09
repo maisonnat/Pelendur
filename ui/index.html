@@ -8,63 +8,88 @@
 </head>
 <body data-tauri-drag-region>
 <div id="hud-container" class="hud-container" data-tauri-drag-region>
-    <!-- Minimal mode icon -->
-    <div id="minimal-icon" class="minimal-icon hidden" title="Click to expand HUD">
-      <span class="pl-minimal-dot"></span>
-    </div>
+  <!-- Animated background gradient overlay -->
+  <div class="pl-aura"></div>
 
-    <!-- Control bar -->
-    <div class="pl-control-bar" data-tauri-drag-region>
-      <div class="pl-control-bar__left">
-        <button id="profile-btn" class="pl-btn pl-btn--icon" title="Open Profile Management">Profile</button>
-      </div>
-      <div class="pl-control-bar__right">
-        <button id="audio-source-btn" class="pl-btn pl-btn--icon" title="Select Audio Source">🎧</button>
-        <button id="interview-btn" class="pl-btn pl-btn--icon interview-btn" title="Start Interview Mode">🎙️</button>
-        <button id="minimal-btn" class="pl-btn pl-btn--icon" title="Toggle Minimal Mode">🔘</button>
-        <button id="lock-btn" class="pl-btn pl-btn--icon" title="Lock/Unlock Click-through (Ctrl+Alt+L)">🔓</button>
-        <button id="clear-btn" class="pl-btn pl-btn--icon" title="Clear Feed">🗑️</button>
-        <button id="regenerate-btn" class="pl-btn pl-btn--icon" title="Regenerate Last Suggestion">🔄</button>
-        <button id="close-btn" class="pl-btn pl-btn--icon" title="Close Pelendur">✕</button>
-        <span id="status-indicator" class="pl-status-dot pl-status-dot--idle"></span>
-      </div>
-    </div>
+  <!-- Minimal mode icon -->
+  <div id="minimal-icon" class="minimal-icon hidden" title="Click to expand HUD">
+    <span class="pl-minimal-dot"></span>
+  </div>
 
-    <!-- System status bar -->
-    <div id="pl-system-status" class="pl-system-status pl-system-status--loading">
-      <span class="pl-system-item" data-component="stt"><span class="pl-status-dot"></span> STT</span>
-      <span class="pl-system-item" data-component="llm"><span class="pl-status-dot"></span> LLM</span>
-      <span class="pl-system-item" data-component="kg"><span class="pl-status-dot"></span> KG</span>
+  <!-- Control bar -->
+  <div class="pl-control-bar" data-tauri-drag-region>
+    <div class="pl-control-bar__left">
+      <button id="profile-btn" class="pl-btn pl-btn--icon" title="Open Profile Management">Profile</button>
     </div>
-
-    <!-- Interview status bar -->
-    <div id="interview-status-bar" class="pl-status-bar hidden">
-      <span class="pl-badge">🎙️ Interview Active</span>
-      <span id="interview-company-display" class="pl-status-bar__company">—</span>
-      <span id="interview-timer" class="pl-status-bar__timer">00:00</span>
+    <div class="pl-control-bar__right">
+      <button id="audio-source-btn" class="pl-btn pl-btn--icon" title="Select Audio Source">🎧</button>
+      <button id="interview-btn" class="pl-btn pl-btn--icon interview-btn" title="Start Interview Mode">🎙️</button>
+      <button id="minimal-btn" class="pl-btn pl-btn--icon" title="Toggle Minimal Mode">🔘</button>
+      <button id="lock-btn" class="pl-btn pl-btn--icon" title="Lock/Unlock Click-through (Ctrl+Alt+L)">🔓</button>
+      <button id="clear-btn" class="pl-btn pl-btn--icon" title="Clear Feed">🗑️</button>
+      <button id="regenerate-btn" class="pl-btn pl-btn--icon" title="Regenerate Last Suggestion">🔄</button>
+      <button id="close-btn" class="pl-btn pl-btn--icon" title="Close Pelendur">✕</button>
+      <span id="status-indicator" class="pl-status-dot pl-status-dot--idle"></span>
     </div>
+  </div>
 
-    <!-- Knowledge panel -->
-    <div id="knowledge-panel" class="knowledge-panel hidden">
-      <div class="panel-header">
-        <span class="icon">🧠</span>
-        <span>Contexto</span>
-        <button onclick="toggleKnowledgePanel()" class="toggle-btn">−</button>
-      </div>
-      
-      <div class="panel-content">
-        <div class="context-section" id="relevant-skills"></div>
-        
-        <div class="context-section collapsible" id="relevant-stories">
-          <div class="section-header" onclick="toggleSection('stories')">
-            ⭐ Historias (0)
-          </div>
-          <div class="section-content hidden" id="stories-content"></div>
+  <!-- Readiness Dashboard — shows when system is ready for meeting -->
+  <div id="readiness-dashboard" class="pl-dashboard">
+    <div class="pl-dashboard__status" id="dashboard-stt">
+      <span class="pl-dashboard__dot" data-component="stt"></span>
+      <span class="pl-dashboard__label">STT</span>
+      <span class="pl-dashboard__detail" id="detail-stt">whisper-tiny</span>
+    </div>
+    <div class="pl-dashboard__status" id="dashboard-llm">
+      <span class="pl-dashboard__dot" data-component="llm"></span>
+      <span class="pl-dashboard__label">LLM</span>
+      <span class="pl-dashboard__detail" id="detail-llm">qwen3</span>
+    </div>
+    <div class="pl-dashboard__status" id="dashboard-kg">
+      <span class="pl-dashboard__dot" data-component="kg"></span>
+      <span class="pl-dashboard__label">KG</span>
+      <span class="pl-dashboard__detail" id="detail-kg">ready</span>
+    </div>
+    <div class="pl-dashboard__status" id="dashboard-audio">
+      <span class="pl-dashboard__dot" data-component="audio"></span>
+      <span class="pl-dashboard__label">Audio</span>
+      <span class="pl-dashboard__detail" id="detail-audio">idle</span>
+    </div>
+    <div class="pl-dashboard__summary">
+      <span id="dashboard-badge" class="pl-badge--ready">✅ Ready</span>
+      <span id="dashboard-metrics" class="pl-dashboard__metrics">0 transcritas</span>
+    </div>
+  </div>
+
+  <!-- Old system status bar (kept for backward compat, hidden by default) -->
+  <div id="pl-system-status" class="pl-system-status hidden"></div>
+
+  <!-- Interview status bar -->
+  <div id="interview-status-bar" class="pl-status-bar hidden">
+    <span class="pl-badge">🎙️ Interview Active</span>
+    <span id="interview-company-display" class="pl-status-bar__company">—</span>
+    <span id="interview-timer" class="pl-status-bar__timer">00:00</span>
+  </div>
+
+  <!-- Knowledge panel -->
+  <div id="knowledge-panel" class="knowledge-panel hidden">
+    <div class="panel-header">
+      <span class="icon">🧠</span>
+      <span>Context</span>
+      <button onclick="toggleKnowledgePanel()" class="toggle-btn">−</button>
+    </div>
+    <div class="panel-content">
+      <div class="context-section" id="relevant-skills"></div>
+      <div class="context-section collapsible" id="relevant-stories">
+        <div class="section-header" onclick="toggleSection('stories')">
+          ⭐ Stories (0)
         </div>
+        <div class="section-content hidden" id="stories-content"></div>
       </div>
     </div>
+  </div>
 
-    <!-- Company selector modal -->
+  <!-- Modals (unchanged) -->
     <div id="company-modal-overlay" class="pl-modal-overlay hidden"></div>
     <div id="company-modal" class="pl-modal hidden">
       <div class="pl-modal-header">
@@ -86,7 +111,6 @@
       </div>
     </div>
 
-    <!-- Summary modal -->
     <div id="summary-modal-overlay" class="pl-modal-overlay hidden"></div>
     <div id="summary-modal" class="pl-modal pl-modal--wide hidden">
       <div class="pl-modal-header">
@@ -98,7 +122,6 @@
       </div>
     </div>
 
-    <!-- Process selector modal -->
     <div id="modal-overlay" class="pl-modal-overlay hidden"></div>
     <div id="process-modal" class="pl-modal hidden">
       <div class="pl-modal-header">
@@ -110,30 +133,27 @@
       </div>
     </div>
 
-    <div class="main-content" data-tauri-drag-region>
-      <!-- Context bar -->
-      <div id="knowledge-context-bar" class="context-bar hidden">
-        <span id="context-indicator" class="context-indicator"></span>
-        <div id="skill-tags" class="skill-tags"></div>
-      </div>
+  <div class="main-content" data-tauri-drag-region>
+    <div id="knowledge-context-bar" class="context-bar hidden">
+      <span id="context-indicator" class="context-indicator"></span>
+      <div id="skill-tags" class="skill-tags"></div>
+    </div>
 
-      <!-- Main suggestion card -->
-      <div id="suggestions-feed" class="suggestions-feed" data-tauri-drag-region>
-        <div class="pl-card--suggestion" data-tauri-drag-region>
-          <div class="pl-card__content" id="main-suggestion">Cargando Pelendur...</div>
-        </div>
-      </div>
-
-      <!-- Partial transcription -->
-      <div id="partial-transcription" class="pl-partial-hidden"></div>
-
-      <!-- Transcription feed -->
-      <div id="transcription-feed" class="transcription-feed" data-tauri-drag-region>
-        <!-- Transcribed text appears here -->
+    <!-- Main suggestion card -->
+    <div id="suggestions-feed" class="suggestions-feed" data-tauri-drag-region>
+      <div class="pl-card--suggestion" data-tauri-drag-region>
+        <div class="pl-card__content" id="main-suggestion">Starting Pelendur...</div>
       </div>
     </div>
+
+    <!-- Partial transcription -->
+    <div id="partial-transcription" class="pl-partial-hidden"></div>
+
+    <!-- Transcription feed -->
+    <div id="transcription-feed" class="transcription-feed" data-tauri-drag-region></div>
   </div>
-  
-  <script src="main.js"></script>
+</div>
+
+<script src="main.js"></script>
 </body>
 </html>

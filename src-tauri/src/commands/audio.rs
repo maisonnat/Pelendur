@@ -1,7 +1,7 @@
 use crate::state::{AppState, AudioDevice, AudioLevelPayload, StreamWrapper, TranscriptionPayload, SuggestionPayload};
 use ghostai_pilot::{audio, knowledge, loopback, mixer, stt, vad};
 use ghostai_pilot::llm::ChatMessage;
-use tauri::{AppHandle, Manager, State, Emitter};
+use tauri::{AppHandle, Manager, State};
 use cpal::traits::{DeviceTrait, HostTrait};
 use futures_util::StreamExt;
 
@@ -59,7 +59,7 @@ pub fn get_audio_devices() -> Result<Vec<AudioDevice>, String> {
     let mut result = Vec::new();
     if let Ok(input_devices) = host.input_devices() {
         for (i, device) in input_devices.enumerate() {
-            let name = device.name().unwrap_or_else(|_| format!("Device {}", i));
+            let name = device.description().map(|d| d.name().to_string()).unwrap_or_else(|_| format!("Device {}", i));
             result.push(AudioDevice {
                 index: i,
                 label: if name.to_lowercase().contains("voicemeeter") { "🔊 VoiceMeeter" } else { "🎤 Input" }.to_string(),
@@ -111,7 +111,7 @@ pub async fn start_capture(
         } else {
             audio::find_microphone_device().map_err(|e| e.to_string())?
         };
-        println!("  🎤 Mic: {:?}", device.name().unwrap_or_default());
+        println!("  🎤 Mic: {:?}", device.description().map(|d| d.name().to_string()).unwrap_or_default());
 
         let (rx, mic_stream) = mixer::start_dual_capture(device)?;
         let mut streams = streams_lock.lock().map_err(|e| e.to_string())?;
@@ -126,7 +126,7 @@ pub async fn start_capture(
         } else {
             audio::find_microphone_device().map_err(|e| e.to_string())?
         };
-        println!("  🎤 Captura mic: {:?}", device.name().unwrap_or_default());
+        println!("  🎤 Captura mic: {:?}", device.description().map(|d| d.name().to_string()).unwrap_or_default());
         let (rx, stream) = audio::start_capture(device).map_err(|e| e.to_string())?;
         let mut streams = streams_lock.lock().map_err(|e| e.to_string())?;
         streams.push(StreamWrapper(stream));
@@ -152,17 +152,14 @@ pub async fn start_capture(
             }
         }
 
-        macro_rules! diag { ($($arg:tt)*) => {{
-            if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open("pelendur-pipe.log") {
-                use std::io::Write;
-                let _ = writeln!(f, $($arg)*);
-            }
-        }}; }
+        macro_rules! diag { ($($arg:tt)*) => {{}}; }
 
         let mut speech_buffer: Vec<f32> = Vec::with_capacity(16000 * 10);
         let mut is_capturing = false;
         // Track last partial transcription position (in samples @ chunk rate)
         let mut last_partial_pos: usize = 0;
+        let mut partial_in_progress = false;
+        const MAX_SPEECH_SAMPLES: usize = 16000 * 15; // 15s max — force STT if VAD stuck
         // Pre-roll ring buffer — captures ~200ms before VAD triggers
         let mut pre_roll = ghostai_pilot::ringbuf::AudioRingBuffer::default_config();
         // WebRTC ML-based VAD — superior to energy-based. Initialized at 16kHz,
@@ -172,15 +169,8 @@ pub async fn start_capture(
         while let Ok(chunk) = audio_rx.recv() {
             // Always feed ring buffer for pre-roll lookahead
             pre_roll.push(&chunk.samples);
-            let rms_val = (chunk.samples.iter().map(|s|s*s).sum::<f32>()/chunk.samples.len() as f32).sqrt();
-            diag!("[DIAG] Chunk: {}samp {}Hz rms={:.4}", chunk.samples.len(), chunk.sample_rate, rms_val);
-            // Audio level visualization
-            if let Ok(mut diag_f) = std::fs::OpenOptions::new().create(true).append(true).open("pelendur-pipe.log") {
-                use std::io::Write;
-                let rms = (chunk.samples.iter().map(|s|s*s).sum::<f32>()/chunk.samples.len() as f32).sqrt();
-                let _ = writeln!(diag_f, "[DIAG] Chunk: {}samp {}Hz rms={:.4}", 
-                    chunk.samples.len(), chunk.sample_rate, rms);
-            }
+            let _rms_val = (chunk.samples.iter().map(|s|s*s).sum::<f32>()/chunk.samples.len() as f32).sqrt();
+            diag!("[DIAG] Chunk: {}samp {}Hz rms={:.4}", chunk.samples.len(), chunk.sample_rate, _rms_val);
             // Audio level visualization ────────────────────────────────
             let (rms, peak) = compute_audio_levels(&chunk.samples);
             let waveform = downsample_waveform(&chunk.samples, WAVEFORM_POINTS);
@@ -195,10 +185,10 @@ pub async fn start_capture(
             let vad_event = vad_detector.process(&chunk.samples);
             match vad_event {
                 vad::VadEvent::SpeechStart => {
-                    diag!("[DIAG] VAD SpeechStart (rms={:.4})", rms_val);
                     is_capturing = true;
                     speech_buffer.clear();
                     last_partial_pos = 0;
+                    partial_in_progress = false;
                     // Prepone pre-roll audio (~200ms before VAD triggered)
                     // This captures the beginning of words that the VAD might have missed
                     let roll = pre_roll.drain();
@@ -254,7 +244,7 @@ pub async fn start_capture(
 
                         let stt_result = match rx_stt.recv_timeout(std::time::Duration::from_secs(30)) {
                             Ok(Ok(t)) => Some(t),
-                            Ok(Err(e)) => { diag!("[DIAG] STT error: {}", e); None }
+                            Ok(Err(_e)) => { eprintln!("STT error: {}", _e); None }
                             Err(_) => { diag!("[DIAG] STT timeout (30s)"); None }
                         };
                         if let Some(transcription) = stt_result {
@@ -358,7 +348,7 @@ pub async fn start_capture(
 
                                     // Store the turn to Engram if in interview mode
                                     if let Ok(session) = interview_session.lock() {
-                                        if let Some(interview) = session.as_ref() {
+                                        if let Some(_interview) = session.as_ref() {
                                             if let Ok(memory) = memory.lock() {
                                                 if let Err(e) = rt.block_on(memory.save_turn(&transcription_for_engram, &response)) {
                                                     eprintln!("  ⚠️ Engram turn save failed: {}", e);
@@ -380,13 +370,75 @@ pub async fn start_capture(
                     if is_capturing {
                         speech_buffer.extend_from_slice(&chunk.samples);
 
-                        // Partial transcription every ~2s of speech accumulation
-                        // Emit partial transcription to HUD so user sees text live
                         let sample_rate = chunk.sample_rate;
-                        let partial_interval = sample_rate as usize; // 1s at current rate
+
+                        // Force STT if buffer exceeds max (VAD might be stuck in Speaking)
+                        if speech_buffer.len() > MAX_SPEECH_SAMPLES {
+                            println!("  ⏰ Max buffer reached ({}samp) — forcing STT", speech_buffer.len());
+                            is_capturing = false;
+
+                            let cleaned = stt::apply_silence_suppression(
+                                &speech_buffer, sample_rate, 0.01);
+                            let max_samp = sample_rate as usize * 2;
+                            let final_buf = if cleaned.len() > max_samp {
+                                cleaned[..max_samp].to_vec()
+                            } else {
+                                cleaned
+                            };
+                            if final_buf.len() >= 8000 {
+                                // Inline STT processing for force-STT (same as SpeechEnd)
+                                let wav_bytes = match stt::pcm_to_wav(&final_buf, sample_rate) {
+                                    Ok(bytes) => bytes,
+                                    Err(e) => {
+                                        eprintln!("WAV encoding failed: {}", e);
+                                        continue;
+                                    }
+                                };
+                                let (tx_stt, rx_stt) = std::sync::mpsc::channel();
+                                let config_stt = config.clone();
+                                let wav_stt = wav_bytes.clone();
+                                std::thread::Builder::new()
+                                    .name("stt-worker".into())
+                                    .spawn(move || {
+                                        let result = stt::transcribe_local_sync(&config_stt, &wav_stt);
+                                        let _ = tx_stt.send(result);
+                                    })
+                                    .expect("Failed to spawn STT worker");
+                                let stt_result = match rx_stt.recv_timeout(std::time::Duration::from_secs(30)) {
+                                    Ok(Ok(t)) => Some(t),
+                                    Ok(Err(e)) => { eprintln!("STT error: {}", e); None }
+                                    Err(_) => { eprintln!("STT timeout (30s)"); None }
+                                };
+                                if let Some(transcription) = stt_result {
+                                    if transcription.trim().is_empty() {
+                                        continue;
+                                    }
+                                    println!("  📝 \"{}\"", transcription);
+                                    emit_to_window(&app_handle, "transcription-update",
+                                        TranscriptionPayload { text: transcription.clone() });
+                                    let mut conversation = conversation_lock.lock().unwrap();
+                                    conversation.push(ChatMessage {
+                                        role: "user".to_string(), content: transcription,
+                                    });
+                                    let _ = rt.block_on(stream_llm_response(
+                                        &app_handle,
+                                        &config.openai_base_url,
+                                        &config.openai_api_key,
+                                        &config.openai_model,
+                                        &conversation,
+                                    ));
+                                }
+                            }
+                            continue;
+                        }
+
+                        // Partial transcription every ~1s of speech accumulation
+                        let partial_interval = sample_rate as usize;
                         if speech_buffer.len() >= sample_rate as usize * 2
                             && speech_buffer.len() - last_partial_pos >= partial_interval
+                            && !partial_in_progress
                         {
+                            partial_in_progress = true;
                             last_partial_pos = speech_buffer.len();
 
                             let partial_buf = speech_buffer.clone();
@@ -400,7 +452,6 @@ pub async fn start_capture(
                                         if let Ok(text) = stt::transcribe_local_sync(&cfg, &wav) {
                                             let trimmed = text.trim().to_string();
                                             if !trimmed.is_empty() {
-                                                diag!("[DIAG] Partial STT OK: {}", &trimmed[..80.min(trimmed.len())]);
                                                 emit_to_window(&ah, "partial-transcription",
                                                     TranscriptionPayload { text: trimmed });
                                             }

@@ -1,6 +1,5 @@
 use crate::state::AppState;
 use crate::types::*;
-use ghostai_pilot::knowledge::graph::KnowledgeGraph;
 use tauri::State;
 
 // ─── Skills ─────────────────────────────────────────────────────────────

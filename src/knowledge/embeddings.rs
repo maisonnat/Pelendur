@@ -85,7 +85,6 @@ struct StoredEmbedding {
 pub struct VectorStore {
     embeddings: Vec<StoredEmbedding>,
     embedding_service: HashEmbeddingService,
-    use_api: bool,
 }
 
 impl VectorStore {
@@ -93,15 +92,13 @@ impl VectorStore {
         Self {
             embeddings: Vec::new(),
             embedding_service: HashEmbeddingService::default(),
-            use_api: false,
         }
     }
 
-    pub fn with_api(embedding_engine: Option<&EmbeddingEngine>) -> Self {
+    pub fn with_api(_embedding_engine: Option<&EmbeddingEngine>) -> Self {
         Self {
             embeddings: Vec::new(),
             embedding_service: HashEmbeddingService::default(),
-            use_api: embedding_engine.is_some(),
         }
     }
 

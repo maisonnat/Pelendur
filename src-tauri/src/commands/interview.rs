@@ -1,12 +1,10 @@
-use crate::state::{AppState, InterviewSession, SuggestionPayload, TranscriptionPayload};
+use crate::state::{AppState, InterviewSession};
 use crate::types::{CompanyInfo, InterviewSessionState, InterviewSummary};
-use ghostai_pilot::knowledge;
 use ghostai_pilot::llm::{self, ChatMessage};
 use std::fs;
 use std::io::Write;
 use std::path::Path;
-use std::sync::{Arc, Mutex};
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 
 /// Load company research from knowledge/companies/<name>/overview.md
 /// If no research exists and auto_research is true, triggers NotebookLM research.
@@ -358,7 +356,7 @@ pub fn get_interview_state(state: State<'_, AppState>) -> Result<InterviewSessio
 }
 
 #[tauri::command]
-pub fn list_company_research(state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, String> {
+pub fn list_company_research(_state: State<'_, AppState>) -> Result<Vec<CompanyInfo>, String> {
     let companies_dir = Path::new("knowledge").join("companies");
     if !companies_dir.exists() {
         return Ok(vec![]);
