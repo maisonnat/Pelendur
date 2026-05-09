@@ -112,141 +112,15 @@ fn calculate_rms(samples: &[f32]) -> f32 {
     (sum_squares / samples.len() as f32).sqrt()
 }
 
-// ─── WebRTC VAD (ML-based, superior to energy-based) ──────────
+// ─── Earshot VAD (neural, pure Rust) ────────────────────────
 
-/// WebRTC-based Voice Activity Detection using the full-rank VAD model.
-///
-/// Uses the `webrtc-vad` crate (Chromium's VAD algorithm) for ML-based
-/// voice detection. Significantly more accurate than energy-based VAD:
-/// - Better noise rejection (adaptive threshold)
-/// - Works across sample rates (8k-48k)
-/// - Lower false-positive rate in noisy environments
-///
-/// Maintains an internal sample buffer to handle arbitrary chunk sizes.
-pub struct WebRtcVadDetector {
-    vad: webrtc_vad::Vad,
-    /// Internal buffer to accumulate samples until we have a full frame
-    sample_buf: Vec<f32>,
-    /// Frame size in samples (30ms @ configured rate)
-    frame_size: usize,
-    /// State machine
-    state: VadState,
-    /// Consecutive speech frames counted so far
-    speech_frames: usize,
-    /// Consecutive silence frames during speech
-    silence_frames: usize,
-    /// Min speech frames to trigger SpeechStart
-    min_speech_frames: usize,
-    /// Min silence frames to trigger SpeechEnd (hangover)
-    min_silence_frames: usize,
-    #[allow(dead_code)]
-    /// Actual sample rate for calculating RMS fallback
-    sample_rate: u32,
-}
+/// Neural voice activity detection using the `earshot` crate.
+/// Uses a minGRU RNN for superior accuracy vs WebRTC VAD.
+/// Processes 256-sample frames at 16kHz, returns probability score.
+mod vad_earshot;
 
-impl WebRtcVadDetector {
-    /// Create a new WebRTC VAD detector.
-    ///
-    /// * `sample_rate` - Audio sample rate (Hz). Internally uses 16kHz for VAD.
-    /// * `min_speech_ms` - Minimum speech duration to trigger (ms)
-    /// * `min_silence_ms` - Minimum silence to end speech / hangover (ms)
-    pub fn new(sample_rate: u32, min_speech_ms: u32, min_silence_ms: u32) -> Self {
-        let rate = match sample_rate {
-            8000 => webrtc_vad::SampleRate::Rate8kHz,
-            16000 => webrtc_vad::SampleRate::Rate16kHz,
-            32000 => webrtc_vad::SampleRate::Rate32kHz,
-            48000 => webrtc_vad::SampleRate::Rate48kHz,
-            _ => webrtc_vad::SampleRate::Rate16kHz,
-        };
-        // 30ms frames. Shorter = more responsive but less stable.
-        let frame_ms: u32 = 30;
-        let frame_size = (sample_rate as usize * frame_ms as usize) / 1000;
-        let mut vad = webrtc_vad::Vad::new_with_rate(rate);
-        // Aggressiveness: 0=quality, 1=low bitrate, 2=aggressive, 3=very aggressive
-        vad.set_mode(webrtc_vad::VadMode::Aggressive);
-
-        Self {
-            vad,
-            sample_buf: Vec::with_capacity(frame_size),
-            frame_size,
-            state: VadState::Silence,
-            speech_frames: 0,
-            silence_frames: 0,
-            min_speech_frames: (min_speech_ms / frame_ms).max(1) as usize,
-            min_silence_frames: (min_silence_ms / frame_ms).max(1) as usize,
-            sample_rate,
-        }
-    }
-
-    /// Default: 16kHz, 100ms min speech, 500ms min silence.
-    pub fn default_config() -> Self {
-        Self::new(16000, 100, 500)
-    }
-
-    /// Process a chunk of audio samples. Returns a VadEvent.
-    pub fn process(&mut self, samples: &[f32]) -> VadEvent {
-        // Accumulate samples until we have enough for one frame
-        self.sample_buf.extend_from_slice(samples);
-
-        if self.sample_buf.len() < self.frame_size {
-            return VadEvent::Silence;
-        }
-
-        // Take exactly one frame from the buffer
-        let frame: Vec<f32> = self.sample_buf.drain(..self.frame_size).collect();
-
-        // Convert f32 to i16 (webrtc-vad expects i16 PCM)
-        let frame_i16: Vec<i16> = frame
-            .iter()
-            .map(|&s| (s.clamp(-1.0, 1.0) * 32767.0) as i16)
-            .collect();
-
-        let is_voice = self.vad.is_voice_segment(&frame_i16).unwrap_or(false);
-
-        match self.state {
-            VadState::Silence => {
-                if is_voice {
-                    self.speech_frames += 1;
-                    if self.speech_frames >= self.min_speech_frames {
-                        self.state = VadState::Speaking;
-                        self.silence_frames = 0;
-                        debug!("WebRTC VAD: Speech started");
-                        return VadEvent::SpeechStart;
-                    }
-                } else {
-                    self.speech_frames = 0;
-                }
-                VadEvent::Silence
-            }
-            VadState::Speaking => {
-                if is_voice {
-                    self.silence_frames = 0;
-                } else {
-                    self.silence_frames += 1;
-                    if self.silence_frames >= self.min_silence_frames {
-                        self.state = VadState::Silence;
-                        self.speech_frames = 0;
-                        self.silence_frames = 0;
-                        debug!("WebRTC VAD: Speech ended");
-                        return VadEvent::SpeechEnd { duration_chunks: 0 };
-                    }
-                }
-                VadEvent::Silence
-            }
-        }
-    }
-
-    pub fn is_speaking(&self) -> bool {
-        self.state == VadState::Speaking
-    }
-
-    pub fn reset(&mut self) {
-        self.state = VadState::Silence;
-        self.speech_frames = 0;
-        self.silence_frames = 0;
-        self.sample_buf.clear();
-    }
-}
+/// Re-exported for convenience — aliased as the default VAD.
+pub use vad_earshot::EarshotDetector;
 
 #[cfg(test)]
 mod tests {
@@ -287,13 +161,5 @@ mod tests {
         let event = vad.process(&loud);
         assert!(matches!(event, VadEvent::SpeechStart));
         assert!(vad.is_speaking());
-    }
-
-    #[test]
-    fn test_webrtc_vad_reset() {
-        let mut vad = WebRtcVadDetector::default_config();
-        assert!(!vad.is_speaking());
-        vad.reset();
-        assert!(!vad.is_speaking());
     }
 }

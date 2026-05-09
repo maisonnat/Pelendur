@@ -162,9 +162,10 @@ pub async fn start_capture(
         const MAX_SPEECH_SAMPLES: usize = 16000 * 15; // 15s max — force STT if VAD stuck
         // Pre-roll ring buffer — captures ~200ms before VAD triggers
         let mut pre_roll = ghostai_pilot::ringbuf::AudioRingBuffer::default_config();
-        // WebRTC ML-based VAD — superior to energy-based. Initialized at 16kHz,
-        // the actual sample rate is set per-chunk in the VAD's internal resampler.
-        let mut vad_detector = vad::WebRtcVadDetector::default_config();
+        // Earshot neural VAD — pure Rust, ~110 KiB, no C dependencies.
+        // Processes 256-sample frames at 16kHz via internal decimation from
+        // the native WASAPI rate (typically 48kHz, handled automatically).
+        let mut vad_detector = vad::EarshotDetector::new(48000, 100, 500, 0.5);
 
         while let Ok(chunk) = audio_rx.recv() {
             // Always feed ring buffer for pre-roll lookahead

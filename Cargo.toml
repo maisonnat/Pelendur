@@ -42,7 +42,7 @@ strsim = "0.11"
 uuid = { version = "1", features = ["v4"] }
 pdf-extract = "0.10"
 ringbuf = "0.5"
-webrtc-vad = "0.4.0"
+earshot = "1"
 whisper-rs = "0.16"
 
 [target.'cfg(target_os = "windows")'.dependencies]

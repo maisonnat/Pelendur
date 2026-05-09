@@ -7,3 +7,6 @@ incremental = false
 CMAKE_GENERATOR = "Ninja"
 # Suprime D8016 (C++17/C11 incompatibles) + CUB C++17 deprecation en CUDA 13
 CL = "/DCCCL_IGNORE_DEPRECATED_CPP_DIALECT"
+# Fix exit code 4 en CUDA 13.x + MSVC: nvcc necesita flags explícitos
+NVCC_PREPEND_FLAGS = "-Xcompiler /Zc:preprocessor -Xcompiler /std:c++17"
+CCCL_IGNORE_DEPRECATED_CPP_DIALECT = "1"
