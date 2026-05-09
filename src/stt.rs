@@ -3,12 +3,22 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use std::io::Cursor;
 use std::sync::{Mutex, OnceLock};
+#[cfg(not(feature = "parakeet"))]
 use std::time::Instant;
 use tracing::{debug, info};
-use whisper_rs::{FullParams, SamplingStrategy, WhisperContext, WhisperContextParameters};
+use whisper_rs::{WhisperContext, WhisperContextParameters};
+
+#[cfg(not(feature = "parakeet"))]
+use whisper_rs::{FullParams, SamplingStrategy};
 
 #[cfg(feature = "parakeet")]
 use crate::parakeet::ParakeetModel;
+
+#[cfg(feature = "parakeet")]
+use std::sync::mpsc;
+
+#[cfg(feature = "parakeet")]
+use tokio::sync::broadcast;
 
 #[cfg(feature = "parakeet")]
 static PARAKEET_MODEL: OnceLock<Mutex<ParakeetModel>> = OnceLock::new();
@@ -357,7 +367,7 @@ fn num_cpus() -> usize {
 
 /// Stub — Parakeet routes through the dedicated inference thread, not here.
 #[cfg(feature = "parakeet")]
-async fn transcribe_local(config: &Config, audio_wav: &[u8]) -> Result<String> {
+async fn transcribe_local(_config: &Config, audio_wav: &[u8]) -> Result<String> {
     use hound::WavReader;
     use std::io::Cursor;
     // Decode WAV bytes back to f32 samples
