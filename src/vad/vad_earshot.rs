@@ -194,12 +194,18 @@ impl EarshotDetector {
         let mut result = Vec::with_capacity(target_len.max(256));
 
         if ratio.fract() < 1e-6 {
-            // Integer ratio — simple decimation (most common: 48kHz → 3:1)
+            // Integer ratio — decimate with moving average filter (anti-aliasing).
+            // Instead of taking sample[0] (which introduces aliasing from frequencies
+            // above 8kHz folding back into the VAD band), average all samples in
+            // each decimation window. Acts as a crude low-pass filter (boxcar) at
+            // zero extra dependency cost. O(n), no heap allocs beyond the result vec.
             let step = ratio.round() as usize;
             for chunk in samples.chunks(step) {
-                if let Some(&sample) = chunk.first() {
-                    result.push(sample);
+                if chunk.is_empty() {
+                    continue;
                 }
+                let sum: f32 = chunk.iter().sum();
+                result.push(sum / chunk.len() as f32);
             }
         } else {
             // Non-integer ratio — linear interpolation
@@ -328,10 +334,13 @@ mod tests {
         // 768 samples at 48kHz → 256 samples at 16kHz (3:1)
         let input: Vec<f32> = (0..768).map(|i| (i as f32) / 768.0).collect();
         let output = vad.decimate_to_16khz(&input);
-        assert_eq!(output.len(), 256, "48kHz → 16kHz should produce 256 samples");
-        // Every 3rd sample should be preserved
-        assert!((output[0] - input[0]).abs() < 0.001);
-        assert!((output[1] - input[3]).abs() < 0.001);
+        assert_eq!(output.len(), 256, "48kHz to 16kHz should produce 256 samples");
+        // boxcar anti-aliasing: output[0] = average of input[0..2]
+        let expected_0 = (input[0] + input[1] + input[2]) / 3.0;
+        assert!((output[0] - expected_0).abs() < 0.001);
+        // output[1] = average of input[3..5]
+        let expected_1 = (input[3] + input[4] + input[5]) / 3.0;
+        assert!((output[1] - expected_1).abs() < 0.001);
     }
 
     #[test]
